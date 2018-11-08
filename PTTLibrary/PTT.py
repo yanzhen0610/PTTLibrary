@@ -33,17 +33,28 @@ WaterBallType = Information.WaterBallType
 PostSearchType = Information.PostSearchType
 PostDeleteStatus = Information.PostDeleteStatus
 
+
 class ResponseUnit(object):
     def __init__(self, SendMessage, Refresh):
         self.__SendMessage = SendMessage
         self.__Refresh = Refresh
+
     def getSendMessage(self):
         return self.__SendMessage
+
     def needRefresh(self):
         return self.__Refresh
 
+
 class DetectUnit(object):
-    def __init__(self, DisplayMsg, DetectTarget, Response, BreakDetect=False, ErrCode=0, LogLV=0):
+    def __init__(
+            self, 
+            DisplayMsg, 
+            DetectTarget, 
+            Response, BreakDetect=False, 
+            ErrCode=0, 
+            LogLV=0):
+
         self.__DisplayMsg = DisplayMsg
         self.__DetectTarget = DetectTarget
         self.__Response = Response
@@ -53,20 +64,27 @@ class DetectUnit(object):
             self.__LogLevel = LogLevel.INFO
         else:
             self.__LogLevel = LogLV
+
     def isMatch(self, Screen):
         if self.__DetectTarget in Screen:
             return True
         return False
+
     def getDisplayMsg(self):
         return self.__DisplayMsg
+
     def getDetectTarget(self):
         return self.__DetectTarget
+
     def getResponse(self):
         return self.__Response
+
     def isBreakDetect(self):
         return self.__BreakDetect
+
     def getErrorCode(self):
         return self.__ErrCode
+
     def getLogLevel(self):
         return self.__LogLevel
 
@@ -75,30 +93,43 @@ PTTBUGDetectUnit = DetectUnit(
     'PttBug', 
     ResponseUnit(' ', False),
     BreakDetect=True,
-    ErrCode = ErrorCode.PttBug
+    ErrCode=ErrorCode.PttBug
 )
 
-GotoMainMenuCommand =               '\x1b\x4fD\x1b\x4fD\x1b\x4fD\x1b\x4fD\x1b\x4fD'
-RefreshCommand =                    '\x0C'
+GotoMainMenuCommand = '\x1b\x4fD\x1b\x4fD\x1b\x4fD\x1b\x4fD\x1b\x4fD'
+RefreshCommand = '\x0C'
 # \x1b\x4fA (上, 下右左 BCD)
-MoveUpCommand =                     '\x1b\x4fA'
-MoveDownCommand =                   '\x1b\x4fB'
-MoveRightCommand =                  '\x1b\x4fC'
-MoveLeftCommand =                   '\x1b\x4fD'
+MoveUpCommand = '\x1b\x4fA'
+MoveDownCommand = '\x1b\x4fB'
+MoveRightCommand = '\x1b\x4fC'
+MoveLeftCommand = '\x1b\x4fD'
+
 
 class Library(object):
-    def __init__(self, ID='', Password='', kickOtherLogin=True, MaxIdleTime=20, _LogLevel=-1, WaterBallHandler=None, LogHandler=None, PreWait=0, EveryWait=0, MaxEveryWait=0, MinEveryWait=0):
+    def __init__(
+            self, 
+            ID='', 
+            Password='', 
+            kickOtherLogin=True, 
+            MaxIdleTime=20, 
+            _LogLevel=-1, 
+            WaterBallHandler=None, 
+            LogHandler=None, 
+            PreWait=0, 
+            EveryWait=0, 
+            MaxEveryWait=0, 
+            MinEveryWait=0):
 
         self.__host = 'ptt.cc'
         self.__ID = ID
         self.__Password = Password
         self.__kickOtherLogin = kickOtherLogin
         
-        self.__LoginMode_Login =                1
-        self.__LoginMode_Recover =              2
-        self.__LoginMode_MultiLogin =           3
+        self.__LoginMode_Login = 1
+        self.__LoginMode_Recover = 2
+        self.__LoginMode_MultiLogin = 3
 
-        self.__Refresh =                    '\x0C'
+        self.__Refresh = '\x0C'
 
         # screen size
         self.width = 80
@@ -119,9 +150,9 @@ class Library(object):
         
         self.__isMailBoxFull = False
         self.__MailFullAPILock = False
-        self.__DefaultTimeout =                 5
-        self.__Cursor =                       '>'
-        self.__MaxMultiLogin =                  5
+        self.__DefaultTimeout = 5
+        self.__Cursor = '>'
+        self.__MaxMultiLogin = 5
 
         self.__ConnectList = [None] * self.__MaxMultiLogin
         self.__ReceiveData = [''] * self.__MaxMultiLogin
@@ -134,12 +165,13 @@ class Library(object):
 
         self.__isBackground = False
 
-        self.__delAllWord = '\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08'
+        self.__delAllWord = 
+        '\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08'
 
-        self.__ShowProgressBar =                True
+        self.__ShowProgressBar = True
 
-        self.__IdleTime =                       0
-        self.__MaxIdleTime =                    MaxIdleTime
+        self.__IdleTime = 0
+        self.__MaxIdleTime = MaxIdleTime
 
         if PreWait == 0:
             self.__PreWait = 0.01
@@ -182,18 +214,19 @@ class Library(object):
         self.__SSHKey = ECDSAKey.generate()
         self.Log('產生 SSH 金鑰完成')
 
-        self.__IdleThread =                 None
-        self.__RunIdleThread =              False
+        self.__IdleThread = None
+        self.__RunIdleThread = False
         
         self.__WaterBallHandler = WaterBallHandler
-        if self.__WaterBallHandler != None:
+        if self.__WaterBallHandler is not None:
             self.__MaxIdleTime = 2
         
         self.__WaterBallList = []
 
         self.__APILock = [threading.Lock()] * self.__MaxMultiLogin
 
-        self.__ErrorCode =                      ErrorCode.Success
+        self.__ErrorCode = ErrorCode.Success
+
     def __AntiLogout(self):
         
         self.__RunIdleThread = True
@@ -205,11 +238,11 @@ class Library(object):
                 continue
             ErrCode, result = self.getTime()
             self.__IdleTime = 0
-
         return
+
     def __WaterBallProceeor(self):
         
-        if self.__WaterBallHandler == None:
+        if self.__WaterBallHandler is None:
             return
         
         while len(self.__WaterBallList) != 0:
@@ -220,6 +253,7 @@ class Library(object):
                 self.Log('WaterBallHandler 介面錯誤', LogLevel.WARNING)
             except:
                 self.Log('WaterBallHandler 未知錯誤', LogLevel.WARNING)
+
     def __APICheck(self, API):
         # sys._getframe().f_code.co_name
         # self.__isConnected[ConnectIndex]
@@ -236,15 +270,32 @@ class Library(object):
             return False
         self.__ErrorCode = ErrorCode.Success
         return True
+
     def showScreen(self, ErrCode, FunctionName):
-        ConnectIndex=0
+        ConnectIndex = 0
         self.Log('PTT 畫面輸出開始')
         try:
-            print(self.__ReceiveData[ConnectIndex].encode(sys.stdin.encoding, "replace").decode(sys.stdin.encoding))
+            print(
+                self.__ReceiveData[
+                    ConnectIndex
+                ].encode(
+                    sys.stdin.encoding, "replace"
+                ).decode(
+                    sys.stdin.encoding
+                ))
         except Exception:
-            print(self.__ReceiveData[ConnectIndex].encode('utf-8', "replace").decode('utf-8'))
+            print(
+                self.__ReceiveData[
+                    ConnectIndex
+                ].encode(
+                    'utf-8', "replace"
+                ).decode(
+                    'utf-8'
+                ))
         self.Log('PTT 畫面輸出結束')
-    def __showScreen(self, ErrCode, FunctionName, ConnectIndex=0, _LogLevel=-1):
+
+    def __showScreen(
+            self, ErrCode, FunctionName, ConnectIndex=0, _LogLevel=-1):
         
         if _LogLevel == -1:
             _LogLevel = self.__LogLevel
@@ -252,15 +303,45 @@ class Library(object):
         if _LogLevel >= self.__LogLevel:
             print('-' * 50)
             try:
-                print(self.__PreReceiveData[ConnectIndex].encode(sys.stdin.encoding, "replace").decode(sys.stdin.encoding))
+                print(
+                    self.__PreReceiveData[
+                        ConnectIndex].encode(
+                            sys.stdin.encoding, "replace"
+                        ).decode(
+                            sys.stdin.encoding
+                        ))
             except Exception:
-                print(self.__PreReceiveData[ConnectIndex].encode('utf-8', "replace").decode('utf-8'))
-            print('頻道 ' + str(ConnectIndex) + ' 畫面長度為: ' + str(len(self.__ReceiveData[ConnectIndex])) + ' ' + str(len(self.__PreReceiveData[ConnectIndex])))
+                print(
+                    self.__PreReceiveData[
+                        ConnectIndex
+                    ].encode(
+                        'utf-8', "replace"
+                    ).decode(
+                        'utf-8'
+                    ))
+            print(
+                '頻道 ' + str(ConnectIndex) + ' 畫面長度為: ' + 
+                str(len(self.__ReceiveData[ConnectIndex])) + ' ' + 
+                str(len(self.__PreReceiveData[ConnectIndex])))
             print('-' * 50)
             try:
-                print(self.__ReceiveData[ConnectIndex].encode(sys.stdin.encoding, "replace").decode(sys.stdin.encoding))
+                print(
+                    self.__ReceiveData[
+                        ConnectIndex
+                    ].encode(
+                        sys.stdin.encoding, "replace"
+                    ).decode(
+                        sys.stdin.encoding
+                    ))
             except Exception:
-                print(self.__ReceiveData[ConnectIndex].encode('utf-8', "replace").decode('utf-8'))
+                print(
+                    self.__ReceiveData[
+                        ConnectIndex
+                    ].encode(
+                        'utf-8', "replace"
+                    ).decode(
+                        'utf-8'
+                    ))
             print('錯誤在 ' + FunctionName + ' 函式發生')
             print('-' * 50)
     
@@ -286,15 +367,15 @@ class Library(object):
             Message = str(Message)
             if len(Message) > 0:
                 Util.Log(Prefix + Message)
-                if self.__LogHandler != None:
+                if self.__LogHandler is not None:
                     try:
                         self.__LogHandler(Message)
                     except TypeError:
                         self.Log('LogHandler 介面錯誤', LogLevel.WARNING)
                     except:
                         self.Log('LogHandler 未知錯誤', LogLevel.WARNING)
-                    
         return ErrorCode.Success
+
     def operatePTT(self, SendMessage):
         
         self.__IdleTime = 0
@@ -308,7 +389,14 @@ class Library(object):
         self.__APILock[ConnectIndex].release()
         
         return result
-    def __operatePTT(self, ConnectIndex, SendMessage='', CatchTargetList=[], Refresh=False, ExtraWait=0):
+        
+    def __operatePTT(
+            self, 
+            ConnectIndex, 
+            SendMessage='', 
+            CatchTargetList=[], 
+            Refresh=False, 
+            ExtraWait=0):
         
         SendMessageTimeout = 10.0
         PreWait = self.__PreWait
@@ -317,7 +405,7 @@ class Library(object):
         MaxEveryWait = self.__MaxEveryWait
         MinEveryWait = self.__MinEveryWait
 
-        if CatchTargetList == None:
+        if CatchTargetList is None:
             CatchTargetList = []
         
         ErrCode = ErrorCode.Success
@@ -333,7 +421,9 @@ class Library(object):
                 TimeCout = 0
                 StartTime = time.time()
                 time.sleep(PreWait)
-                while not self.__ConnectList[ConnectIndex].channel.send_ready():
+                
+                while not 
+                self.__ConnectList[ConnectIndex].channel.send_ready():
                     time.sleep(EveryWait)
 
                     if TimeCout >= 100:
@@ -342,7 +432,14 @@ class Library(object):
                         if (NowTime - StartTime) >= SendMessageTimeout:
                             self.Log('超時斷線，重新連線')
                             self.__connectRemote(ConnectIndex)
-                            return self.__operatePTT(ConnectIndex, SendMessage, CatchTargetList, Refresh, ExtraWait)
+
+                            return self.__operatePTT(
+                                ConnectIndex, 
+                                SendMessage, 
+                                CatchTargetList, 
+                                Refresh, 
+                                ExtraWait
+                            )
                     TimeCout += 1
                 
                 EncodeMessage, Len = uao.encode(SendMessage)
@@ -360,7 +457,13 @@ class Library(object):
                     if (NowTime - StartTime) >= SendMessageTimeout:
                         self.Log('超時斷線，重新連線')
                         self.__connectRemote(ConnectIndex)
-                        return self.__operatePTT(ConnectIndex, SendMessage, CatchTargetList, Refresh, ExtraWait)
+                        return self.__operatePTT(
+                            ConnectIndex, 
+                            SendMessage, 
+                            CatchTargetList, 
+                            Refresh, 
+                            ExtraWait
+                        )
                 TimeCout += 1
 
             self.__ReceiveData[ConnectIndex] = self.__wait_str(ConnectIndex)
@@ -421,7 +524,7 @@ class Library(object):
         if ConnectIndex == 0:
             self.ReceiveData = self.__ReceiveData[ConnectIndex]
 
-        if self.__WaterBallHandler != None:
+        if self.__WaterBallHandler is not None:
             line = self.__ReceiveData[ConnectIndex].split('\n').pop()
                 # if '★' in line:
             if line.startswith('  ★'):
@@ -545,7 +648,7 @@ class Library(object):
             
             try:
                 self.__isConnected[ConnectIndex] = False
-                if self.__ConnectList[ConnectIndex] != None:
+                if self.__ConnectList[ConnectIndex] is not None:
                     self.__ConnectList[ConnectIndex] = None
                     self.Log('連線頻道 ' + str(ConnectIndex) + ' 重啟')
                 else:
@@ -778,7 +881,7 @@ class Library(object):
                 self.__isConnected[index] = False
             
             for index in range(self.__MaxMultiLogin):
-                if self.__ConnectList[index] == None:
+                if self.__ConnectList[index] is None:
                     continue
                 self.Log('頻道 ' + str(index) + ' 登出', LogLevel.DEBUG)
                 
@@ -1414,7 +1517,7 @@ class Library(object):
                 ErrCode, Post = self.__getPost(Board, PostID, PostIndex, _ConnectIndex, SearchType, Search)
 
             if ErrCode == ErrorCode.PostDeleted:
-                if Post == None:
+                if Post is None:
                     continue
                 self.__APILock[ConnectIndex].release()
                 self.__ErrorCode = ErrCode
@@ -1470,16 +1573,16 @@ class Library(object):
         IPCheck = re.search("\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", IPTemp)
 
         # 檢查 IP 格式並檢查與冒號的距離，大於10 避免推文內容是 IP 被當成推文 IP的情況
-        if IPCheck != None and (PushContent.find(IPCheck.group()) - PushContent.find(': ') > 10):
+        if IPCheck is not None and (PushContent.find(IPCheck.group()) - PushContent.find(': ') > 10):
             PushIP = IPCheck.group()
             PushContent = PushContent[:PushContent.find(PushIP)]
             PushContent = PushContent.rstrip()
           
         PushTime = line[-11:]
 
-        if re.search("[0-9][0-9]:[0-9][0-9]", PushTime) == None:
+        if re.search("[0-9][0-9]:[0-9][0-9]", PushTime) is None:
             return ErrorCode.ParseError, None
-        if re.search("[0-9][0-9]/[0-9][0-9]", PushTime) == None:
+        if re.search("[0-9][0-9]/[0-9][0-9]", PushTime) is None:
             return ErrorCode.ParseError, None
 
         # print('PushAuthor: =' + PushAuthor + '=')
@@ -1910,7 +2013,7 @@ class Library(object):
 
             if i > LastPostEndMarkIndex:
                 _, CurrentPush = self.__parsePush(line)
-                if CurrentPush != None:
+                if CurrentPush is not None:
                     PostPushList.append(CurrentPush)
             
         PostContent = '\n'.join(PostContentList)
@@ -2705,7 +2808,7 @@ class Library(object):
             # print('! ' + line)
             if '※ 發信站: 批踢踢實業坊(ptt.cc), 來自' in line:
                 IPCheck = re.search("\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", line)
-                if IPCheck != None:
+                if IPCheck is not None:
                     MailIP = IPCheck.group()
 
         MailContent = '\n'.join(MailContentList)
