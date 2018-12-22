@@ -10,7 +10,7 @@ def ParseParameter(type, input):
     return result
 
 
-class PostSearchType(object):
+class PostSearchType:
     # 搜尋關鍵字    / ?
     # 搜尋作者      a
     # 搜尋推文數    Z
@@ -26,14 +26,14 @@ class PostSearchType(object):
     MinValue = Unknown
     MaxValue = Money
 
-class WaterBallType(object):
+class WaterBallType:
     Catch =                                 1
     Send =                                  2
 
     MinValue = Catch
     MaxValue = Send
 
-class WaterBallOperateType(object):
+class WaterBallOperateType:
     Clear =                                 1
     Mail =                                  2
     DoNothing =                             3
@@ -41,7 +41,7 @@ class WaterBallOperateType(object):
     MinValue = Clear
     MaxValue = DoNothing
 
-class OperateType(object):
+class OperateType:
     Add =                                   1
     Del =                                   2
     Query =                                 3
@@ -49,7 +49,7 @@ class OperateType(object):
     MinValue = Add
     MaxValue = Query
 
-class FriendListType(object):
+class FriendListType:
     GoodFriend =                            1
     BadGuy =                                2
     SuperFriend =                           3
@@ -59,29 +59,26 @@ class FriendListType(object):
     MinValue = GoodFriend
     MaxValue = OtherSpecial
 
-class ReplyPostType(object):
-    def __init__(self):
-        self.Board =                        1
-        self.Mail =                         2
-        self.Board_Mail =                   3
+class ReplyPostType:
+    Board =                        1
+    Mail =                         2
+    Board_Mail =                   3
         
-class LogLevel(object):
-    def __init__(self):
-        self.DEBUG =                        1
-        self.WARNING =                      2
-        self.INFO =                         3
-        self.CRITICAL =                     4
-        self.SLIENT =                       5
+class LogLevel:
+    DEBUG =                        1
+    WARNING =                      2
+    INFO =                         3
+    CRITICAL =                     4
+    SLIENT =                       5
 
-        self.MaxValue = self.SLIENT
-        self.MinValue = self.DEBUG
+    MaxValue = SLIENT
+    MinValue = DEBUG
 
 class PushType(object):
-    def __init__(self):
-        self.Unknown =                       0
-        self.Push =                         1
-        self.Boo =                          2
-        self.Arrow =                        3
+    Unknown =                       0
+    Push =                         1
+    Boo =                          2
+    Arrow =                        3
 
 class MailInformation(object):
     def __init__(self, Author, Title, Date, Content, IP, RawData):

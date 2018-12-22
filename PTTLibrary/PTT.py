@@ -22,12 +22,12 @@ except SystemError:
     import Information
 
 Version = Version.Ver
-LogLevel = Information.LogLevel()
-PushType = Information.PushType()
-ErrorCode = ErrorCode.ErrorCode()
-ReplyPostType = Information.ReplyPostType()
-FriendListType = Information.FriendListType()
-OperateType = Information.OperateType()
+LogLevel = Information.LogLevel
+PushType = Information.PushType
+ErrorCode = ErrorCode.ErrorCode
+ReplyPostType = Information.ReplyPostType
+FriendListType = Information.FriendListType
+OperateType = Information.OperateType
 WaterBallOperateType = Information.WaterBallOperateType
 WaterBallType = Information.WaterBallType
 PostSearchType = Information.PostSearchType
@@ -282,6 +282,8 @@ class Library(object):
                 Prefix = '[資訊] '
             elif _LogLevel == LogLevel.CRITICAL:
                 Prefix = '[重要] '
+            else:
+                Prefix = '[資訊] '
             
             Message = str(Message)
             if len(Message) > 0:
@@ -711,7 +713,7 @@ class Library(object):
                     self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
                     self.Log('無法解析的狀態! PTT Library 緊急停止')
                     self.logout()
-                    sys.exit()
+                    # sys.exit()
             if ErrCode == ErrorCode.WaitTimeout:
                 Retry = True
             elif ErrCode != ErrorCode.Success:
@@ -1631,7 +1633,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name + ' part 1', ConnectIndex=ConnectIndex)
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
-                sys.exit()
+                # sys.exit()
         
         Lines = self.__ReceiveData[ConnectIndex].split('\n')
         InfoLines = []
@@ -1894,7 +1896,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name + ' part 2', ConnectIndex=ConnectIndex)
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
-                sys.exit()
+                # sys.exit()
         
         FirstPage = FirstPage[FirstPage.find('作者'):]
         # print(FirstPage)
@@ -2050,7 +2052,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name + ' part 1', ConnectIndex=ConnectIndex)
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
-                sys.exit()
+                # sys.exit()
         if ErrCode != ErrorCode.Success:
             self.__APILock[ConnectIndex].release()
             self.__ErrorCode = ErrCode
@@ -2139,7 +2141,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name + ' part 2', ConnectIndex=ConnectIndex)
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
-                sys.exit()
+                # sys.exit()
         
         self.__APILock[ConnectIndex].release()
         self.__WaterBallProceeor()
@@ -2317,7 +2319,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
-                sys.exit()
+                # sys.exit()
         if ErrCode != ErrorCode.Success:
             self.__APILock[ConnectIndex].release()
             self.__ErrorCode = ErrCode
@@ -2498,7 +2500,7 @@ class Library(object):
                     self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
                     self.Log('無法解析的狀態! PTT Library 緊急停止')
                     self.logout()
-                    sys.exit()
+                    # sys.exit()
             if ErrCode != ErrorCode.Success:
                 self.__APILock[ConnectIndex].release()
                 self.__ErrorCode = ErrCode
@@ -2691,7 +2693,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
-                sys.exit()
+                # sys.exit()
         if ErrCode != ErrorCode.Success:
             self.__APILock[ConnectIndex].release()
             self.__ErrorCode = ErrCode
@@ -2873,7 +2875,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
-                sys.exit()
+                # sys.exit()
         
         self.__APILock[ConnectIndex].release()
         self.__WaterBallProceeor()
@@ -2996,7 +2998,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
-                sys.exit()
+                # sys.exit()
         
         self.__APILock[ConnectIndex].release()
         self.__WaterBallProceeor()
@@ -3142,7 +3144,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
-                sys.exit()
+                # sys.exit()
         
         self.__APILock[ConnectIndex].release()
         self.__WaterBallProceeor()
@@ -3406,7 +3408,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
-                sys.exit()
+                # sys.exit()
         
         self.__APILock[ConnectIndex].release()
         self.__WaterBallProceeor()
@@ -3534,7 +3536,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
-                sys.exit()
+                # sys.exit()
 
         self.__WaterBallProceeor()
         self.__APILock[ConnectIndex].release()
@@ -3735,7 +3737,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
-                sys.exit()
+                # sys.exit()
         
         if inputOperateType == OperateType.Query:
             result = []
@@ -3897,7 +3899,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name + 'Part 1', ConnectIndex=ConnectIndex)
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
-                sys.exit()
+                # sys.exit()
         
         if not NoMsg:
             for i in range(len(WaterBallListTemp)):
@@ -3993,7 +3995,7 @@ class Library(object):
                     self.__showScreen(ErrCode, sys._getframe().f_code.co_name + 'Part 2', ConnectIndex=ConnectIndex)
                     self.Log('無法解析的狀態! PTT Library 緊急停止')
                     self.logout()
-                    sys.exit()
+                    # sys.exit()
 
         self.__WaterBallProceeor()
         self.__APILock[ConnectIndex].release()
@@ -4063,7 +4065,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
-                sys.exit()
+                # sys.exit()
 
         self.__APILock[ConnectIndex].release()
         
