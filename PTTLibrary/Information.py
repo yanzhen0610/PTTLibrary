@@ -16,14 +16,14 @@ class PostSearchType(object):
     # 搜尋推文數    Z
     # 搜尋標記      G
     # 搜尋稿酬      A
-    Unknow =                                0
+    Unknown =                                0
     Keyword =                               1
     Author =                                2
     Push =                                  3
     Mark =                                  4
     Money =                                 5
 
-    MinValue = Unknow
+    MinValue = Unknown
     MaxValue = Money
 
 class WaterBallType(object):
@@ -78,7 +78,7 @@ class LogLevel(object):
 
 class PushType(object):
     def __init__(self):
-        self.Unknow =                       0
+        self.Unknown =                       0
         self.Push =                         1
         self.Boo =                          2
         self.Arrow =                        3
@@ -163,10 +163,10 @@ class PostDeleteStatus(object):
     NotDeleted =                            0
     ByAuthor =                              1
     ByModerator =                           2
-    ByUnknow =                              3
+    ByUnknown =                              3
 
     MinValue = NotDeleted
-    MaxValue = ByUnknow
+    MaxValue = ByUnknown
 
 
 class PostInformation(object):

@@ -2,7 +2,7 @@
 class ErrorCode(object):
     def __init__(self):
         self.Success =                          0
-        self.UnknowError =                    0.1
+        self.UnknownError =                   0.1
         self.ConnectError =                     1
         self.EOFErrorCode =                     2
         self.ConnectResetError =                3

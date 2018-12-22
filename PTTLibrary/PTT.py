@@ -579,8 +579,8 @@ class Library(object):
             except:
                 self.Log('主機沒有回應')
                 Retry = True
-                self.__ErrorCode = ErrorCode.UnknowError
-                ErrCode = ErrorCode.UnknowError
+                self.__ErrorCode = ErrorCode.UnknownError
+                ErrCode = ErrorCode.UnknownError
                 continue
 
             self.Log('頻道 ' + str(ConnectIndex) + ' 建立互動通道成功')
@@ -729,7 +729,7 @@ class Library(object):
                 self.__isConnected[ConnectIndex] = True
             else:
                 self.Log('頻道 ' + str(ConnectIndex) + ' 無法偵測游標。重新執行連線')
-                # return ErrorCode.UnknowError
+                # return ErrorCode.UnknownError
         
         return ErrorCode.Success
     
@@ -832,7 +832,7 @@ class Library(object):
         AllIndex = re.findall(r'\d+ ', self.__ReceiveData[ConnectIndex])
         
         if len(AllIndex) == 0:
-            ErrCode = ErrorCode.UnknowError
+            ErrCode = ErrorCode.UnknownError
             self.__ErrorCode = ErrCode
             return ErrCode, result
 
@@ -898,7 +898,7 @@ class Library(object):
                 '請按任意鍵繼續', 
                 ResponseUnit('\x1b\x4fD\x1b\x4fD\x1b\x4fD', False),
                 BreakDetect=True,
-                ErrCode = ErrorCode.UnknowError
+                ErrCode = ErrorCode.UnknownError
             ),
             PTTBUGDetectUnit
         ]
@@ -1002,7 +1002,7 @@ class Library(object):
                 print(self.__ReceiveData[ConnectIndex])
                 self.__APILock[ConnectIndex].release()
 
-                ErrCode = ErrorCode.UnknowError
+                ErrCode = ErrorCode.UnknownError
                 self.__ErrorCode = ErrCode
                 return ErrCode
 
@@ -1057,7 +1057,7 @@ class Library(object):
             else:
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex, _LogLevel=LogLevel.DEBUG)
                 self.__APILock[ConnectIndex].release()
-                ErrCode = ErrorCode.UnknowError
+                ErrCode = ErrorCode.UnknownError
                 self.__ErrorCode = ErrCode
                 return ErrCode
 
@@ -1084,7 +1084,7 @@ class Library(object):
         else:
             self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex, _LogLevel=LogLevel.DEBUG)
             self.__APILock[ConnectIndex].release()
-            ErrCode = ErrorCode.UnknowError
+            ErrCode = ErrorCode.UnknownError
             self.__ErrorCode = ErrCode
             return ErrCode
 
@@ -1118,7 +1118,7 @@ class Library(object):
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex, _LogLevel=LogLevel.DEBUG)
                 self.__APILock[ConnectIndex].release()
 
-                ErrCode = ErrorCode.UnknowError
+                ErrCode = ErrorCode.UnknownError
                 self.__ErrorCode = ErrCode
                 return ErrCode
         
@@ -1316,7 +1316,7 @@ class Library(object):
             return ErrCode
         else:
             self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex, _LogLevel=LogLevel.DEBUG)
-            ErrCode = ErrorCode.UnknowError
+            ErrCode = ErrorCode.UnknownError
             self.__ErrorCode = ErrCode
             return ErrCode
         
@@ -1374,9 +1374,9 @@ class Library(object):
         if SearchType < PostSearchType.MinValue or PostSearchType.MaxValue < SearchType:
             self.Log('搜尋類型輸入錯誤: 無法判別搜尋類型 搜尋條件失效', LogLevel.WARNING)
             Search = ''
-            SearchType = PostSearchType.Unknow
+            SearchType = PostSearchType.Unknown
         
-        if (Search != '' and SearchType == PostSearchType.Unknow) or (Search == '' and SearchType != PostSearchType.Unknow):
+        if (Search != '' and SearchType == PostSearchType.Unknown) or (Search == '' and SearchType != PostSearchType.Unknown):
             self.Log('無法判別搜尋類型 搜尋條件失效', LogLevel.WARNING)
             Search = ''
 
@@ -1392,17 +1392,17 @@ class Library(object):
             if not Search.isdigit():
                 self.Log('搜尋條件輸入錯誤: 搜尋推文數 但搜尋條件非數字 搜尋條件失效', LogLevel.WARNING)
                 Search = ''
-                SearchType = PostSearchType.Unknow
+                SearchType = PostSearchType.Unknown
         elif SearchType == PostSearchType.Mark:
             if Search != 'm' and Search != 's':
                 self.Log('搜尋條件輸入錯誤: 搜尋標記 但搜尋條件非 m 或 s 搜尋條件失效', LogLevel.WARNING)
                 Search = ''
-                SearchType = PostSearchType.Unknow
+                SearchType = PostSearchType.Unknown
         elif SearchType == PostSearchType.Money:
             if not Search.isdigit():
                 self.Log('搜尋條件輸入錯誤: 搜尋稿酬 但搜尋條件非數字 搜尋條件失效', LogLevel.WARNING)
                 Search = ''
-                SearchType = PostSearchType.Unknow
+                SearchType = PostSearchType.Unknown
 
         self.__APILock[ConnectIndex].acquire()
 
@@ -1440,7 +1440,7 @@ class Library(object):
         
         line = line.lstrip()
         
-        CurrentPushType = PushType.Unknow
+        CurrentPushType = PushType.Unknown
 
         if line.startswith('推'):
             CurrentPushType = PushType.Push
@@ -1449,7 +1449,7 @@ class Library(object):
         elif line.startswith('→'):
             CurrentPushType = PushType.Arrow
         
-        if CurrentPushType == PushType.Unknow:
+        if CurrentPushType == PushType.Unknown:
             return ErrorCode.ParseError, None
 
         PushAuthor = line
@@ -1620,7 +1620,7 @@ class Library(object):
                                 return ErrCode, result
                             else:
                                 print('無法判斷誰刪除: ' + line)
-                                ErrCode = ErrorCode.UnknowError
+                                ErrCode = ErrorCode.UnknownError
                                 self.__ErrorCode = ErrCode
                                 return ErrCode, result
                             
@@ -1790,7 +1790,7 @@ class Library(object):
                                                              Title=Title,
                                                              Money=PostMoney,
                                                              ListDate=ListDate, 
-                                                             DeleteStatus=PostDeleteStatus.ByUnknow)
+                                                             DeleteStatus=PostDeleteStatus.ByUnknown)
                         
                         ErrCode = ErrorCode.PostDeleted
                         self.__ErrorCode = ErrCode
@@ -2413,9 +2413,9 @@ class Library(object):
         if SearchType < PostSearchType.MinValue or PostSearchType.MaxValue < SearchType:
             self.Log('搜尋類型輸入錯誤: 無法判別搜尋類型 搜尋條件失效', LogLevel.WARNING)
             Search = ''
-            SearchType = PostSearchType.Unknow
+            SearchType = PostSearchType.Unknown
         
-        if (Search != '' and SearchType == PostSearchType.Unknow) or (Search == '' and SearchType != PostSearchType.Unknow):
+        if (Search != '' and SearchType == PostSearchType.Unknown) or (Search == '' and SearchType != PostSearchType.Unknown):
             self.Log('無法判別搜尋類型 搜尋條件失效', LogLevel.WARNING)
             Search = ''
 
@@ -2431,17 +2431,17 @@ class Library(object):
             if not Search.isdigit():
                 self.Log('搜尋條件輸入錯誤: 搜尋推文數 但搜尋條件非數字 搜尋條件失效', LogLevel.WARNING)
                 Search = ''
-                SearchType = PostSearchType.Unknow
+                SearchType = PostSearchType.Unknown
         elif SearchType == PostSearchType.Mark:
             if Search != 'm' and Search != 's':
                 self.Log('搜尋條件輸入錯誤: 搜尋標記 但搜尋條件非 m 或 s 搜尋條件失效', LogLevel.WARNING)
                 Search = ''
-                SearchType = PostSearchType.Unknow
+                SearchType = PostSearchType.Unknown
         elif SearchType == PostSearchType.Money:
             if not Search.isdigit():
                 self.Log('搜尋條件輸入錯誤: 搜尋稿酬 但搜尋條件非數字 搜尋條件失效', LogLevel.WARNING)
                 Search = ''
-                SearchType = PostSearchType.Unknow
+                SearchType = PostSearchType.Unknown
 
         self.__APILock[ConnectIndex].acquire()
         if Board == '':
