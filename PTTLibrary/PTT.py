@@ -418,7 +418,8 @@ class Library(object):
                 self.__connectRemote()
                 # return self.__operatePTT(SendMessage, CatchTargetList, Refresh, ExtraWait)
                 continue
-            except OSError:
+            except OSError as e:
+                self.Log(str(e))
                 self.Log('作業系統錯誤斷線，重新連線')
                 self.__connectRemote()
                 # return self.__operatePTT(SendMessage, CatchTargetList, Refresh, ExtraWait)
@@ -659,7 +660,7 @@ class Library(object):
                     '為避免系統負荷過重, 請稍後再試', 
                     ResponseUnit(' ', False),
                     BreakDetect=True,
-                    ErrCode = ErrorCode.WaitTimeout
+                    ErrCode = ErrorCode.PTTUnderPressure
                 ),
                 DetectUnit(
                     ' 更新與同步線上使用者及好友名單',
@@ -704,6 +705,10 @@ class Library(object):
                 ErrCode, CatchIndex = self.__operatePTT(SendMessage=SendMessage, Refresh=Refresh)
                 if ErrCode == ErrorCode.WaitTimeout:
                     self.Log('登入超時重新嘗試')
+                    break
+                elif ErrCode == ErrorCode.PTTUnderPressure:
+                    self.Log('系統負荷過重 sleep(60)')
+                    time.sleep(60)
                     break
                 elif ErrCode != ErrorCode.Success:
                     self.Log('登入操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
@@ -764,7 +769,7 @@ class Library(object):
                 self.Log(' 無法偵測游標。重新執行連線')
                 # return ErrorCode.UnknownError
 
-        time.sleep(5)
+        time.sleep(10)
 
         return ErrorCode.Success
     
@@ -828,7 +833,7 @@ class Library(object):
         self.__ErrorCode = ErrCode
         return ErrCode
 
-    def __getNewestPostIndex(self, Board, ConnectIndex=0, SearchType=0, Search=''):
+    def __getNewestPostIndex(self, Board, SearchType=0, Search=''):
         result = 0
         
         CatchList = [
@@ -855,7 +860,7 @@ class Library(object):
         Refresh = True
         ExtraWait = 0
 
-        ErrCode, CatchIndex = self.__operatePTT(ConnectIndex, SendMessage=SendMessage, CatchTargetList=CatchList, Refresh=Refresh, ExtraWait=ExtraWait)
+        ErrCode, CatchIndex = self.__operatePTT(SendMessage=SendMessage, CatchTargetList=CatchList, Refresh=Refresh, ExtraWait=ExtraWait)
         if ErrCode != ErrorCode.Success:
             self.__ErrorCode = ErrCode
             return ErrCode, result
@@ -948,7 +953,7 @@ class Library(object):
             #self.Log('Try: ' + Board + ' ' + str(TryResult))
             SendMessage = '\x1b\x4fD\x1b\x4fD\x1b\x4fDqs' + Board + '\r\x03\x03 ' + str(TryResult) + '\rQ'
 
-            ErrCode, CatchIndex = self.__operatePTT(ConnectIndex, SendMessage=SendMessage, Refresh=Refresh)
+            ErrCode, CatchIndex = self.__operatePTT(SendMessage=SendMessage, Refresh=Refresh)
             if ErrCode == ErrorCode.WaitTimeout:
                 self.Log('登入超時重新嘗試')
                 break
@@ -993,6 +998,7 @@ class Library(object):
         ErrCode = ErrorCode.Success
         self.__ErrorCode = ErrCode
         return ErrCode, result
+
     def post(self, Board, Title, Content, PostType, SignType):
         
         ConnectIndex = 0
@@ -2434,9 +2440,10 @@ class Library(object):
         ErrCode = ErrorCode.Success
         self.__ErrorCode = ErrCode
         return ErrCode, result
+
     def getNewestIndex(self, Board='', SearchType=0, Search=''):
         self.__IdleTime = 0
-        ConnectIndex = 0
+        # ConnectIndex = 0
         result = 0
         try:
             Board = str(Board)
@@ -2481,93 +2488,95 @@ class Library(object):
                 Search = ''
                 SearchType = PostSearchType.Unknown
 
-        self.__APILock.acquire()
-        if Board == '':
+        # self.__APILock.acquire()
+        with self.__APILock:
+            if Board == '':
 
-            SendMessage = GotoMainMenuCommand + ' \x1aM0\r$'
-            Refresh = True
-            isBreakDetect = False
-            # 先後順序代表偵測的優先順序
-            DetectTargetList = [
-                DetectUnit(
-                    '進入信箱',
-                    '郵件選單', 
-                    ResponseUnit('', False),
-                    BreakDetect=True,
-                    ErrCode = ErrorCode.Success
-                ),
-                # 
-                PTTBUGDetectUnit
-            ]
-            
-            while not isBreakDetect:
-                ErrCode, CatchIndex = self.__operatePTT(ConnectIndex, SendMessage=SendMessage, Refresh=Refresh)
-                if ErrCode == ErrorCode.WaitTimeout:
-                    self.Log('超時')
-                    self.__APILock.release()
-                    
-                    self.__ErrorCode = ErrCode
-                    return ErrCode, result
-                elif ErrCode != ErrorCode.Success:
-                    self.Log('操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                    self.__APILock.release()
-                    
-                    self.__ErrorCode = ErrCode
-                    return ErrCode, result
+                SendMessage = GotoMainMenuCommand + ' \x1aM0\r$'
+                Refresh = True
+                isBreakDetect = False
+                # 先後順序代表偵測的優先順序
+                DetectTargetList = [
+                    DetectUnit(
+                        '進入信箱',
+                        '郵件選單', 
+                        ResponseUnit('', False),
+                        BreakDetect=True,
+                        ErrCode = ErrorCode.Success
+                    ),
+                    # 
+                    PTTBUGDetectUnit
+                ]
                 
-                # self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
-
-                isDetectedTarget = False
-
-                for DetectTarget in DetectTargetList:
-                    if DetectTarget.isMatch(self.__ReceiveData):
-                        self.Log(DetectTarget.getDisplayMsg(), _LogLevel=LogLevel.DEBUG)
-
-                        SendMessage = DetectTarget.getResponse().getSendMessage()
-                        Refresh = DetectTarget.getResponse().needRefresh()
+                while not isBreakDetect:
+                    ErrCode, CatchIndex = self.__operatePTT(SendMessage=SendMessage, Refresh=Refresh)
+                    if ErrCode == ErrorCode.WaitTimeout:
+                        self.Log('超時')
+                        # self.__APILock.release()
                         
-                        isDetectedTarget = True
-                        if DetectTarget.isBreakDetect():
-                            isBreakDetect = True
-                            ErrCode = DetectTarget.getErrorCode()
-                        break
+                        self.__ErrorCode = ErrCode
+                        return ErrCode, result
+                    elif ErrCode != ErrorCode.Success:
+                        self.Log('操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
+                        # self.__APILock.release()
+                        
+                        self.__ErrorCode = ErrCode
+                        return ErrCode, result
+                    
+                    # self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
 
-                if not isDetectedTarget:
-                    self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
-                    self.Log('無法解析的狀態! PTT Library 緊急停止')
-                    self.logout()
-                    # sys.exit()
-            if ErrCode != ErrorCode.Success:
-                self.__APILock.release()
-                self.__ErrorCode = ErrCode
-                return ErrCode, result
+                    isDetectedTarget = False
 
-            MailBoxLineList = self.__ReceiveData.split('\n')
+                    for DetectTarget in DetectTargetList:
+                        if DetectTarget.isMatch(self.__ReceiveData):
+                            self.Log(DetectTarget.getDisplayMsg(), _LogLevel=LogLevel.DEBUG)
 
-            # for i in range(len(MailBoxLineList)):
-            #     print('line', i,MailBoxLineList[i])
+                            SendMessage = DetectTarget.getResponse().getSendMessage()
+                            Refresh = DetectTarget.getResponse().needRefresh()
+                            
+                            isDetectedTarget = True
+                            if DetectTarget.isBreakDetect():
+                                isBreakDetect = True
+                                ErrCode = DetectTarget.getErrorCode()
+                            break
 
-            result = list(map(int, re.findall(r'\d+', MailBoxLineList[3])))[0]
-            
-        else:
-            
-            if not self.__APICheck(sys._getframe().f_code.co_name):
-                self.__APILock.release()
-                return self.__ErrorCode, result
-
-            for i in range(3):
-                ErrCode, result = self.__getNewestPostIndex(Board=Board, SearchType=SearchType, Search=Search)
-                if ErrCode == ErrorCode.Success:
-                    self.__APILock.release()
+                    if not isDetectedTarget:
+                        self.__showScreen(ErrCode, sys._getframe().f_code.co_name)
+                        self.Log('無法解析的狀態! PTT Library 緊急停止')
+                        self.logout()
+                        # sys.exit()
+                if ErrCode != ErrorCode.Success:
+                    # self.__APILock.release()
                     self.__ErrorCode = ErrCode
                     return ErrCode, result
-        
-        self.__APILock.release()
-        self.__WaterBallProcessor()
 
-        ErrCode = ErrorCode.Success
-        self.__ErrorCode = ErrCode
-        return ErrCode, result
+                MailBoxLineList = self.__ReceiveData.split('\n')
+
+                # for i in range(len(MailBoxLineList)):
+                #     print('line', i,MailBoxLineList[i])
+
+                result = list(map(int, re.findall(r'\d+', MailBoxLineList[3])))[0]
+                
+            else:
+                
+                if not self.__APICheck(sys._getframe().f_code.co_name):
+                    # self.__APILock.release()
+                    return self.__ErrorCode, result
+
+                for i in range(3):
+                    ErrCode, result = self.__getNewestPostIndex(Board=Board, SearchType=SearchType, Search=Search)
+                    if ErrCode == ErrorCode.Success:
+                        # self.__APILock.release()
+                        self.__ErrorCode = ErrCode
+                        return ErrCode, result
+            
+            # self.__APILock.release()
+            self.__WaterBallProcessor()
+
+            ErrCode = ErrorCode.Success
+            self.__ErrorCode = ErrCode
+            return ErrCode, result
+
     def getMail(self, MailIndex):
         self.__IdleTime = 0
         ConnectIndex = 0

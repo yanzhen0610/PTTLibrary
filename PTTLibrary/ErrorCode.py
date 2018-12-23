@@ -29,3 +29,4 @@ class ErrorCode:
     MustRunBeforeLogin =              25
     DeprecatedAPI =                   26
     CaCaBeastEatPost =                27
+    PTTUnderPressure =                28
