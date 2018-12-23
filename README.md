@@ -1,4 +1,3 @@
-![PTTLibrary: A PTT Library in Python](https://i.imgur.com/B1kIMgR.png)
 # PTT Library
 
 Forked from [Truth0906/PTTLibrary](https://github.com/Truth0906/PTTLibrary)
@@ -10,28 +9,6 @@ Forked from [Truth0906/PTTLibrary](https://github.com/Truth0906/PTTLibrary)
 2. 改善 `login()` `logout()` `getPost()` `getNewestIndex()`
 
 3. 刪除不穩定的多頻道功能。
-
-#### Do you want PTT in Python? import PTT !
-
-###### PTT Library 是一個由 Python 寫成用來操作 PTT 的函式庫，你可以在任何可以使用 Python 的地方，執行你的 PTT 機器人。
-###### 拋棄過往網頁形式的解析，直接登入 PTT 分析最即時的文章與推文，給你最快速的資訊!
-###### 支援開放 API，你可以直接使用開放 API 實作你的 PTT 操作指令
-###### 測試平台: Windows 10, Ubuntu 18.04
-###### 原始碼
-###### github: https://github.com/Truth0906/PTTLibrary
-###### Pypi: https://pypi.org/project/PTTLibrary/
-
-###### 徵求快樂開發夥伴，歡迎開 issue 討論新想法或者發起 pull request
-
-版本
--------------------
-###### 0.7.24
-
-安裝
--------------------
-```
-pip3 install PTTLibrary
-```
 
 基本使用
 -------------------
@@ -49,10 +26,6 @@ if ErrCode != PTT.ErrorCode.Success:
 PTTBot.logout()
 ```
 
-詳細說明
--------------------
-###### 請參考 Test.py 有 API 的範例與說明
-
 需求
 -------------------
 ###### Python 3.6
@@ -61,12 +34,6 @@ PTTBot.logout()
 -------------------
 ###### paramiko
 ###### uao
-
-未來工作
--------------------
-###### 取得我的最愛清單
-###### 可蒐集使用者清單
-###### 支援 PTT2
 
 API
 -------------------
@@ -81,7 +48,7 @@ API
 | getErrorCode   | 取得錯誤碼   |
 | operatePTT   | 向 PTT 送出操作指令   |
 
-贊助
+贊助 
 -------------------
 ###### 如果你喜歡，你可以贊助這個專案
 ###### XMR 贊助位址
