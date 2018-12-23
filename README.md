@@ -10,6 +10,8 @@ Forked from [Truth0906/PTTLibrary](https://github.com/Truth0906/PTTLibrary)
 
 3. 刪除不穩定的多頻道功能。
 
+
+
 基本使用
 -------------------
 ```
