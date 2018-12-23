@@ -9,7 +9,7 @@ Forked from [Truth0906/PTTLibrary](https://github.com/Truth0906/PTTLibrary)
 
 2. 改善 `login()` `logout()` `getPost()` `getNewestIndex()`
 
-3. 
+3. 刪除不穩定的多頻道功能。
 
 #### Do you want PTT in Python? import PTT !
 
