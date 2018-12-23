@@ -59,7 +59,6 @@ PTTBot.logout()
 
 相依函式庫
 -------------------
-###### progressbar2
 ###### paramiko
 ###### uao
 
