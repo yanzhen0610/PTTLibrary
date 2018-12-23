@@ -1,11 +1,15 @@
 ![PTTLibrary: A PTT Library in Python](https://i.imgur.com/B1kIMgR.png)
 # PTT Library
-[![Package Version](https://img.shields.io/pypi/v/PTTLibrary.svg)](https://pypi.python.org/pypi/PTTLibrary)
-[![Build Status](https://travis-ci.org/Truth0906/PTTLibrary.svg?branch=master)](https://travis-ci.org/Truth0906/PTTLibrary)
-[![Codacy Badge](https://api.codacy.com/project/badge/grade/8f2eee1a277d499f95dfd5ee46094fdf)](https://www.codacy.com/app/hunkim/TensorFlow-Tutorials)
-[![Requirements Status](https://requires.io/github/Truth0906/PTTLibrary/requirements.svg?branch=master)](https://requires.io/github/Truth0906/PTTLibrary/requirements/?branch=master)
-![license](https://img.shields.io/github/license/mashape/apistatus.svg)
-[![Join the chat at https://gitter.im/PTTLibrary/Lobby](https://badges.gitter.im/PTTLibrary/Lobby.svg)](https://gitter.im/PTTLibrary/Lobby?utm_source=badge&utm_medium=badge&utm_content=badge)
+
+Forked from [Truth0906/PTTLibrary](https://github.com/Truth0906/PTTLibrary)
+
+## 改動：
+
+1. 增強穩定性，主要用於長期爬文。
+
+2. 改善 `login()` `logout()` `getPost()` `getNewestIndex()`
+
+3. 
 
 #### Do you want PTT in Python? import PTT !
 
