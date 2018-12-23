@@ -76,26 +76,11 @@ API
 | getVersion   | 取得版本資訊   |
 | login   | 登入   |
 | logout   | 登出   |
-| post   | 發佈文章   |
-| push   | 推文   |
-| mail   | 寄信   |
 | getPost   | 取得文章資訊   |
 | getNewestIndex   | 取得該看板最新的文章編號或者信箱最新信件編號   |
-| giveMoney   | 給予使用者 P 幣   |
-| getTime   | 取得 PTT 系統時間   |
-| getUser   | 取得使用者資訊   |
-| crawlBoard   | 爬蟲 API 可傳入 call back 自訂存檔格式  |
-| getMail   | 取得信件資訊   |
 | Log   | 顯示訊息   |
-| changePassword   | 變更密碼   |
-| replyPost   | 回覆文章   |
-| throwWaterBall   | 丟水球   |
-| delPost   | 刪除文章   |
-| operateFriendList   | 操作好友壞人名單   |
-| getHistoricalWaterBall   | 查詢歷史水球紀錄   |
 | getErrorCode   | 取得錯誤碼   |
 | operatePTT   | 向 PTT 送出操作指令   |
-| showScreen   | 顯示輸出畫面   |
 
 贊助
 -------------------
