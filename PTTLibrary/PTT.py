@@ -121,14 +121,21 @@ class Library(object):
         self.__MailFullAPILock = False
         self.__DefaultTimeout =                 5
         self.__Cursor =                       '>'
-        self.__MaxMultiLogin =                  5
+        # self.__MaxMultiLogin =                  5
 
-        self.__ConnectList = [None] * self.__MaxMultiLogin
-        self.__ReceiveData = [''] * self.__MaxMultiLogin
-        self.__ReceiveRawData = [''] * self.__MaxMultiLogin
+        # self.__connection = [None] * self.__MaxMultiLogin
+        # self.__ReceiveData = [''] * self.__MaxMultiLogin
+        # self.__ReceiveRawData = [''] * self.__MaxMultiLogin
         
-        self.__PreReceiveData = [''] * self.__MaxMultiLogin
-        self.__isConnected = [False] * self.__MaxMultiLogin
+        # self.__PreReceiveData = [''] * self.__MaxMultiLogin
+        # self.__isConnected = [False] * self.__MaxMultiLogin
+        # self.__connection = None
+        self.__connection = paramiko.SSHClient()
+        self.__ReceiveData = ''
+        self.__ReceiveRawData = ''
+        
+        self.__PreReceiveData = ''
+        self.__isConnected = False
 
         self.ReceiveData = ''
 
@@ -136,7 +143,7 @@ class Library(object):
 
         self.__delAllWord = '\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08'
 
-        self.__ShowProgressBar =                True
+        # self.__ShowProgressBar =                True
 
         self.__IdleTime =                       0
         self.__MaxIdleTime =                    MaxIdleTime
@@ -171,13 +178,13 @@ class Library(object):
         if ID != '':
             self.Log('使用者帳號: ' + ID)
         
-        if Password != '':
-            TempPW = ''
+        # if Password != '':
+        #     TempPW = ''
 
-            for i in range(len(Password)):
-                TempPW += '*'
+        #     for i in range(len(Password)):
+        #         TempPW += '*'
             
-            self.Log('密碼: ' + TempPW)
+        #     self.Log('密碼: ' + TempPW)
         
         self.__SSHKey = ECDSAKey.generate()
         self.Log('產生 SSH 金鑰完成')
@@ -191,9 +198,12 @@ class Library(object):
         
         self.__WaterBallList = []
 
-        self.__APILock = [threading.Lock()] * self.__MaxMultiLogin
+        # self.__APILock = [threading.Lock()] * self.__MaxMultiLogin
+        self.__APILock = threading.Lock()
+        self.__connectRemoteLock = threading.Lock()
 
         self.__ErrorCode =                      ErrorCode.Success
+
     def __AntiLogout(self):
         
         self.__RunIdleThread = True
@@ -207,7 +217,7 @@ class Library(object):
             self.__IdleTime = 0
 
         return
-    def __WaterBallProceeor(self):
+    def __WaterBallProcessor(self):
         
         if self.__WaterBallHandler == None:
             return
@@ -220,9 +230,10 @@ class Library(object):
                 self.Log('WaterBallHandler 介面錯誤', LogLevel.WARNING)
             except:
                 self.Log('WaterBallHandler 未知錯誤', LogLevel.WARNING)
+
     def __APICheck(self, API):
         # sys._getframe().f_code.co_name
-        # self.__isConnected[ConnectIndex]
+        # self.__isConnected
         
         if API == 'register' and self.__isConnected[0]:
             self.Log('請勿在登入後，執行註冊功能', LogLevel.CRITICAL)
@@ -236,15 +247,16 @@ class Library(object):
             return False
         self.__ErrorCode = ErrorCode.Success
         return True
+
     def showScreen(self, ErrCode, FunctionName):
-        ConnectIndex=0
         self.Log('PTT 畫面輸出開始')
         try:
-            print(self.__ReceiveData[ConnectIndex].encode(sys.stdin.encoding, "replace").decode(sys.stdin.encoding))
+            print(self.__ReceiveData.encode(sys.stdin.encoding, "replace").decode(sys.stdin.encoding))
         except Exception:
-            print(self.__ReceiveData[ConnectIndex].encode('utf-8', "replace").decode('utf-8'))
+            print(self.__ReceiveData.encode('utf-8', "replace").decode('utf-8'))
         self.Log('PTT 畫面輸出結束')
-    def __showScreen(self, ErrCode, FunctionName, ConnectIndex=0, _LogLevel=-1):
+
+    def __showScreen(self, ErrCode, FunctionName, _LogLevel=-1):
         
         if _LogLevel == -1:
             _LogLevel = self.__LogLevel
@@ -252,15 +264,15 @@ class Library(object):
         if _LogLevel >= self.__LogLevel:
             print('-' * 50)
             try:
-                print(self.__PreReceiveData[ConnectIndex].encode(sys.stdin.encoding, "replace").decode(sys.stdin.encoding))
+                print(self.__PreReceiveData.encode(sys.stdin.encoding, "replace").decode(sys.stdin.encoding))
             except Exception:
-                print(self.__PreReceiveData[ConnectIndex].encode('utf-8', "replace").decode('utf-8'))
-            print('頻道 ' + str(ConnectIndex) + ' 畫面長度為: ' + str(len(self.__ReceiveData[ConnectIndex])) + ' ' + str(len(self.__PreReceiveData[ConnectIndex])))
+                print(self.__PreReceiveData.encode('utf-8', "replace").decode('utf-8'))
+            print(' 畫面長度為: ' + str(len(self.__ReceiveData)) + ' ' + str(len(self.__PreReceiveData)))
             print('-' * 50)
             try:
-                print(self.__ReceiveData[ConnectIndex].encode(sys.stdin.encoding, "replace").decode(sys.stdin.encoding))
+                print(self.__ReceiveData.encode(sys.stdin.encoding, "replace").decode(sys.stdin.encoding))
             except Exception:
-                print(self.__ReceiveData[ConnectIndex].encode('utf-8', "replace").decode('utf-8'))
+                print(self.__ReceiveData.encode('utf-8', "replace").decode('utf-8'))
             print('錯誤在 ' + FunctionName + ' 函式發生')
             print('-' * 50)
     
@@ -295,136 +307,150 @@ class Library(object):
                         self.Log('LogHandler 介面錯誤', LogLevel.WARNING)
                     except:
                         self.Log('LogHandler 未知錯誤', LogLevel.WARNING)
-                    
+
         return ErrorCode.Success
+
     def operatePTT(self, SendMessage):
-        
+
         self.__IdleTime = 0
-        ConnectIndex = 0
-        
-        self.__APILock[ConnectIndex].acquire()
+
+        # with self.__APILock:
+        # self.__APILock.acquire()
 
         result = self.__operatePTT(0, SendMessage=SendMessage, Refresh=True)
 
-        self.__WaterBallProceeor()
-        self.__APILock[ConnectIndex].release()
-        
+        self.__WaterBallProcessor()
+        # self.__APILock.release()
+
         return result
-    def __operatePTT(self, ConnectIndex, SendMessage='', CatchTargetList=[], Refresh=False, ExtraWait=0):
+
+    def __operatePTT(self, SendMessage='', CatchTargetList=[], Refresh=False, ExtraWait=0):
         
-        SendMessageTimeout = 10.0
-        PreWait = self.__PreWait
-        EveryWait = self.__EveryWait
+        with self.__APILock:
 
-        MaxEveryWait = self.__MaxEveryWait
-        MinEveryWait = self.__MinEveryWait
+            SendMessageTimeout = 10.0
+            PreWait = self.__PreWait
+            EveryWait = self.__EveryWait
 
-        if CatchTargetList == None:
-            CatchTargetList = []
-        
-        ErrCode = ErrorCode.Success
-        
-        self.__PreReceiveData[ConnectIndex] = self.__ReceiveData[ConnectIndex]
-        self.__ReceiveData[ConnectIndex] = ''
+            MaxEveryWait = self.__MaxEveryWait
+            MinEveryWait = self.__MinEveryWait
 
-        try:
-            if SendMessage != '':
-                if Refresh:
-                    SendMessage += self.__Refresh
-                
-                TimeCout = 0
-                StartTime = time.time()
-                time.sleep(PreWait)
-                while not self.__ConnectList[ConnectIndex].channel.send_ready():
-                    time.sleep(EveryWait)
-
-                    if TimeCout >= 100:
-                        TimeCout = 0
-                        NowTime = time.time()
-                        if (NowTime - StartTime) >= SendMessageTimeout:
-                            self.Log('超時斷線，重新連線')
-                            self.__connectRemote(ConnectIndex)
-                            return self.__operatePTT(ConnectIndex, SendMessage, CatchTargetList, Refresh, ExtraWait)
-                    TimeCout += 1
-                
-                EncodeMessage, Len = uao.encode(SendMessage)
-                self.__ConnectList[ConnectIndex].channel.send(EncodeMessage)
+            if CatchTargetList == None:
+                CatchTargetList = []
             
-            TimeCout = 0
-            StartTime = time.time()
-            time.sleep(PreWait)
-            while not self.__ConnectList[ConnectIndex].channel.recv_ready():
-                time.sleep(EveryWait)
-
-                if TimeCout >= 100:
-                    TimeCout = 0
-                    NowTime = time.time()
-                    if (NowTime - StartTime) >= SendMessageTimeout:
-                        self.Log('超時斷線，重新連線')
-                        self.__connectRemote(ConnectIndex)
-                        return self.__operatePTT(ConnectIndex, SendMessage, CatchTargetList, Refresh, ExtraWait)
-                TimeCout += 1
-
-            self.__ReceiveData[ConnectIndex] = self.__wait_str(ConnectIndex)
-            while self.__ConnectList[ConnectIndex].channel.recv_ready():
-                time.sleep(EveryWait)
-                self.__ReceiveData[ConnectIndex] += self.__recv_str(ConnectIndex)
-
+            ErrCode = ErrorCode.Success
             
-            DelateDetect = [False] * 5
-            while DelateDetect.count(True) == 5:
-                DelateDetect = [False] * 5
-                for i in range(5):
+            self.__PreReceiveData = self.__ReceiveData
+            self.__ReceiveData = ''
+
+            done = False
+
+            while not done:
+                try:
+                    if SendMessage != '':
+                        if Refresh:
+                            SendMessage += self.__Refresh
+                        
+                        count = 0
+                        StartTime = time.time()
+                        time.sleep(PreWait)
+                        while not self.__connection.channel.send_ready():
+                            time.sleep(EveryWait)
+
+                            if count >= 100:
+                                count = 0
+                                NowTime = time.time()
+                                if (NowTime - StartTime) >= SendMessageTimeout:
+                                    self.Log('超時斷線，重新連線')
+                                    self.__connectRemote()
+                                    # return self.__operatePTT(SendMessage, CatchTargetList, Refresh, ExtraWait)
+                                    continue
+                            count += 1
+                        
+                        EncodeMessage, Len = uao.encode(SendMessage)
+                        self.__connection.channel.send(EncodeMessage)
+                    
+                    count = 0
+                    StartTime = time.time()
                     time.sleep(PreWait)
-                    while self.__ConnectList[ConnectIndex].channel.recv_ready():
-                        DelateDetect[i] = True
+                    while not self.__connection.channel.recv_ready():
                         time.sleep(EveryWait)
-                        self.__ReceiveData[ConnectIndex] += self.__recv_str(ConnectIndex)
-            
-            DelateDetectCount = DelateDetect.count(True)
 
-            if DelateDetectCount > 3:
-                EveryWait += 0.01
-                if EveryWait > MaxEveryWait:
-                    EveryWait = MaxEveryWait
-            elif DelateDetectCount == 0:
-                EveryWait -= 0.01
-                if EveryWait < MinEveryWait:
-                    EveryWait = MinEveryWait
-                
-        except socket.timeout:
-            self.Log('超時斷線，重新連線')
-            self.__connectRemote(ConnectIndex)
-            return self.__operatePTT(ConnectIndex, SendMessage, CatchTargetList, Refresh, ExtraWait)
-        except OSError:
-            self.Log('作業系統錯誤斷線，重新連線')
-            self.__connectRemote(ConnectIndex)
-            return self.__operatePTT(ConnectIndex, SendMessage, CatchTargetList, Refresh, ExtraWait)
-        except KeyboardInterrupt:
-            self.Log('使用者中斷')
-            self.__ErrorCode = ErrorCode.UserInterrupt
-            return self.__ErrorCode, -1
-        except:
-            self.Log('斷線，重新連線')
-            if self.__ErrorCode != ErrorCode.UserInterrupt:
-                self.__connectRemote(ConnectIndex)
-            else:
-                return self.__ErrorCode, -1
-            return self.__operatePTT(ConnectIndex, SendMessage, CatchTargetList, Refresh, ExtraWait)
+                        if count >= 100:
+                            count = 0
+                            NowTime = time.time()
+                            if (NowTime - StartTime) >= SendMessageTimeout:
+                                self.Log('超時斷線，重新連線')
+                                self.__connectRemote()
+                                # return self.__operatePTT(SendMessage, CatchTargetList, Refresh, ExtraWait)
+                                continue
+                        count += 1
 
-        # self.__ReceiveData[ConnectIndex] = self.__ReceiveData[ConnectIndex].decode(encoding='big5',errors='ignore')
-        # self.__ReceiveRawData[ConnectIndex] = self.__ReceiveData[ConnectIndex]
-        self.__ReceiveRawData[ConnectIndex], Len = uao.decode(self.__ReceiveData[ConnectIndex])
+                    self.__ReceiveData = self.__wait_str()
+                    while self.__connection.channel.recv_ready():
+                        time.sleep(EveryWait)
+                        self.__ReceiveData += self.__recv_str()
 
-        self.__ReceiveData[ConnectIndex] = self.__ReceiveRawData[ConnectIndex]
+                    
+                    DelateDetect = [False] * 5
+                    while DelateDetect.count(True) == 5:
+                        DelateDetect = [False] * 5
+                        for i in range(5):
+                            time.sleep(PreWait)
+                            while self.__connection.channel.recv_ready():
+                                DelateDetect[i] = True
+                                time.sleep(EveryWait)
+                                self.__ReceiveData += self.__recv_str()
+                    
+                    DelateDetectCount = DelateDetect.count(True)
 
-        self.__ReceiveRawData[ConnectIndex] = self.__cleanScreen(self.__ReceiveRawData[ConnectIndex], NoColor=False)
-        self.__ReceiveData[ConnectIndex] = self.__cleanScreen(self.__ReceiveData[ConnectIndex])
-        if ConnectIndex == 0:
-            self.ReceiveData = self.__ReceiveData[ConnectIndex]
+                    if DelateDetectCount > 3:
+                        EveryWait += 0.01
+                        if EveryWait > MaxEveryWait:
+                            EveryWait = MaxEveryWait
+                    elif DelateDetectCount == 0:
+                        EveryWait -= 0.01
+                        if EveryWait < MinEveryWait:
+                            EveryWait = MinEveryWait
+
+                    done = True
+
+                except socket.timeout:
+                    self.Log('超時斷線，重新連線')
+                    self.__connectRemote()
+                    # return self.__operatePTT(SendMessage, CatchTargetList, Refresh, ExtraWait)
+                    continue
+                except OSError:
+                    self.Log('作業系統錯誤斷線，重新連線')
+                    self.__connectRemote()
+                    # return self.__operatePTT(SendMessage, CatchTargetList, Refresh, ExtraWait)
+                    continue
+                except KeyboardInterrupt:
+                    self.Log('使用者中斷')
+                    self.__ErrorCode = ErrorCode.UserInterrupt
+                    return self.__ErrorCode, -1
+                except:
+                    self.Log('斷線，重新連線')
+                    if self.__ErrorCode != ErrorCode.UserInterrupt:
+                        self.__connectRemote()
+                    else:
+                        return self.__ErrorCode, -1
+                    # return self.__operatePTT(SendMessage, CatchTargetList, Refresh, ExtraWait)
+                    continue
+
+        # self.__ReceiveData = self.__ReceiveData.decode(encoding='big5',errors='ignore')
+        # self.__ReceiveRawData = self.__ReceiveData
+        self.__ReceiveRawData, Len = uao.decode(self.__ReceiveData)
+
+        self.__ReceiveData = self.__ReceiveRawData
+
+        self.__ReceiveRawData = self.__cleanScreen(self.__ReceiveRawData, NoColor=False)
+        self.__ReceiveData = self.__cleanScreen(self.__ReceiveData)
+        # if ConnectIndex == 0:
+        self.ReceiveData = self.__ReceiveData
 
         if self.__WaterBallHandler != None:
-            line = self.__ReceiveData[ConnectIndex].split('\n').pop()
+            line = self.__ReceiveData.split('\n').pop()
                 # if '★' in line:
             if line.startswith('  ★'):
                 line = line[3:]
@@ -436,14 +462,15 @@ class Library(object):
                 self.__WaterBallList.append(CurrentWaterBall)
                 
         for i in range(len(CatchTargetList)):
-            if CatchTargetList[i] in self.__ReceiveData[ConnectIndex]:
-                self.__ConnectList[ConnectIndex].channel.settimeout(self.__DefaultTimeout)
+            if CatchTargetList[i] in self.__ReceiveData:
+                self.__connection.channel.settimeout(self.__DefaultTimeout)
                 return ErrorCode.Success, i
 
-        self.__ConnectList[ConnectIndex].channel.settimeout(self.__DefaultTimeout)
+        self.__connection.channel.settimeout(self.__DefaultTimeout)
 
         self.__ErrorCode = ErrCode
         return ErrCode, -1
+
     def __cleanScreen(self, screen, NoColor=True):
         if not screen:
             return screen
@@ -510,31 +537,37 @@ class Library(object):
         screen = re.sub(r'[\x7f-\xff]', '', screen)
         # self.Log('after: ' + str(screen))
         return screen
-    def __wait_str(self, ConnectIndex):
+
+    def __wait_str(self):
         ch = ''
         while True:
-            ch = self.__ConnectList[ConnectIndex].channel.recv(1)
+            ch = self.__connection.channel.recv(1)
             if ch:
                 break
         # return self.__dec_bytes(ch)
         return ch
-    def __recv_str(self, ConnectIndex):
-        # return self.__dec_bytes(self.__ConnectList[ConnectIndex].channel.recv(self.buf_size))
-        return self.__ConnectList[ConnectIndex].channel.recv(self.buf_size)
+
+    def __recv_str(self):
+        # return self.__dec_bytes(self.__connection.channel.recv(self.buf_size))
+        return self.__connection.channel.recv(self.buf_size)
+
     # decode byte array to UTF-8 string
     def __dec_bytes(self, bytes):
         return bytes.decode('utf-8', errors = 'ignore')
-    def __connectRemote(self, ConnectIndex):
+
+    def __connectRemote(self):
         
         global ErrorCode
 
-        self.__isConnected[ConnectIndex] = False
+        # self.__isConnected = False
+        self.__connection.close()
 
         RetryCount = 0
         Retry = False
         ErrCode = ErrorCode.Success
 
-        while not self.__isConnected[ConnectIndex]:
+        # while not self.__isConnected:
+        while self.__connection.get_transport() is None or not self.__connection.get_transport().is_active():
 
             if Retry:
                 Retry = False
@@ -546,20 +579,20 @@ class Library(object):
                 RetryCount = 0
             
             try:
-                self.__isConnected[ConnectIndex] = False
-                if self.__ConnectList[ConnectIndex] != None:
-                    self.__ConnectList[ConnectIndex] = None
-                    self.Log('連線頻道 ' + str(ConnectIndex) + ' 重啟')
+                # self.__isConnected = False
+                if self.__connection != None:
+                    # self.__connection = None
+                    self.Log(' 重啟')
                 else:
-                    self.Log('連線頻道 ' + str(ConnectIndex) + ' 啟動')
+                    self.Log(' 啟動')
 
-                self.__ConnectList[ConnectIndex] = paramiko.SSHClient()
-                # self.__ConnectList[ConnectIndex].load_system_host_keys()
-                # self.__ConnectList[ConnectIndex].set_missing_host_key_policy(paramiko.WarningPolicy())
-                self.__ConnectList[ConnectIndex].set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                self.__ConnectList[ConnectIndex].connect('ptt.cc', username = 'bbs', password = '', pkey = self.__SSHKey)
+                # self.__connection = paramiko.SSHClient()
+                # # self.__connection.load_system_host_keys()
+                # # self.__connection.set_missing_host_key_policy(paramiko.WarningPolicy())
+                self.__connection.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                self.__connection.connect('ptt.cc', username = 'bbs', password = '', pkey = self.__SSHKey)
                 
-                self.__ConnectList[ConnectIndex].channel = self.__ConnectList[ConnectIndex].invoke_shell(width = self.width, height = self.height)
+                self.__connection.channel = self.__connection.invoke_shell(width = self.width, height = self.height)
             except paramiko.AuthenticationException:
                 # print('... Authentication failed')
                 self.Log('連接至 ' + self.__host + ' SSH 認證失敗')
@@ -585,16 +618,16 @@ class Library(object):
                 ErrCode = ErrorCode.UnknownError
                 continue
 
-            self.Log('頻道 ' + str(ConnectIndex) + ' 建立互動通道成功')
+            self.Log(' 建立互動通道成功')
             
-            self.__ConnectList[ConnectIndex].channel.settimeout(self.__DefaultTimeout)
+            self.__connection.channel.settimeout(self.__DefaultTimeout)
 
-            if ConnectIndex == 0:
-                KickMsg = '頻道 ' + str(ConnectIndex) + ' 刪除重複登入的連線' if self.__kickOtherLogin else '不刪除重複登入的連線'
-                KickResponse = 'y\r' if self.__kickOtherLogin else 'n\r'
-            else:
-                KickMsg = '副頻道不刪除重複登入的連線'
-                KickResponse = 'n\r'
+            # if ConnectIndex == 0:
+            KickMsg = ' 刪除重複登入的連線' if self.__kickOtherLogin else '不刪除重複登入的連線'
+            KickResponse = 'y\r' if self.__kickOtherLogin else 'n\r'
+            # else:
+            #     KickMsg = '副頻道不刪除重複登入的連線'
+            #     KickResponse = 'n\r'
 
             SendMessage = ''
             Refresh = True
@@ -602,7 +635,7 @@ class Library(object):
             # 先後順序代表偵測的優先順序
             DetectTargetList = [
                 DetectUnit(
-                    '頻道 ' + str(ConnectIndex) + ' 郵件已滿',
+                    ' 郵件已滿',
                     '您保存信件數目', 
                     ResponseUnit(GotoMainMenuCommand, True),
                 ),
@@ -612,26 +645,26 @@ class Library(object):
                     ResponseUnit(GotoMainMenuCommand, True)
                 ),
                 DetectUnit(
-                    '頻道 ' + str(ConnectIndex) + ' 放棄未完成文章',
+                    ' 放棄未完成文章',
                     '有一篇文章尚未完成', 
                     ResponseUnit('q\r', False)
                 ),
                 DetectUnit(
-                    '頻道 ' + str(ConnectIndex) + ' 密碼錯誤',
+                    ' 密碼錯誤',
                     '請檢查帳號及密碼大小寫有無輸入錯誤', 
                     ResponseUnit(' ', False),
                     BreakDetect=True,
                     ErrCode = ErrorCode.WrongPassword
                 ),
                 DetectUnit(
-                    '頻道 ' + str(ConnectIndex) + ' 系統負荷過重，重新執行連線',
+                    ' 系統負荷過重，重新執行連線',
                     '為避免系統負荷過重, 請稍後再試', 
                     ResponseUnit(' ', False),
                     BreakDetect=True,
                     ErrCode = ErrorCode.WaitTimeout
                 ),
                 DetectUnit(
-                    '頻道 ' + str(ConnectIndex) + ' 更新與同步線上使用者及好友名單',
+                    ' 更新與同步線上使用者及好友名單',
                     '更新與同步線上使用者及好友名單', 
                     ResponseUnit('\x1b\x4fD\x1b\x4fD', False)
                 ),
@@ -641,23 +674,23 @@ class Library(object):
                     ResponseUnit(KickResponse, True)
                 ),
                 DetectUnit(
-                    '頻道 ' + str(ConnectIndex) + ' 刪除錯誤嘗試紀錄',
+                    ' 刪除錯誤嘗試紀錄',
                     '您要刪除以上錯誤嘗試的記錄嗎', 
                     ResponseUnit('y\r', False)
                 ),
                 DetectUnit(
-                    '頻道 ' + str(ConnectIndex) + ' 登入成功',
+                    ' 登入成功',
                     '我是' + self.__ID, 
                     ResponseUnit(' ', False),
                     BreakDetect=True,
                 ),
                 DetectUnit(
-                    '頻道 ' + str(ConnectIndex) + ' 輸入密碼',
+                    ' 輸入密碼',
                     '請輸入您的密碼:', 
                     ResponseUnit(self.__Password + '\r', False)
                 ),
                 DetectUnit(
-                    '頻道 ' + str(ConnectIndex) + ' 輸入帳號',
+                    ' 輸入帳號',
                     '請輸入代號，或以 guest 參觀，或以 new 註冊', 
                     ResponseUnit(self.__ID + '\r', False)
                 ),
@@ -670,7 +703,7 @@ class Library(object):
             while not isBreakDetect:
 
                 # self.Log('SendMessage: ->' + SendMessage + '<-')
-                ErrCode, CatchIndex = self.__operatePTT(ConnectIndex, SendMessage=SendMessage, Refresh=Refresh)
+                ErrCode, CatchIndex = self.__operatePTT(SendMessage=SendMessage, Refresh=Refresh)
                 if ErrCode == ErrorCode.WaitTimeout:
                     self.Log('登入超時重新嘗試')
                     break
@@ -684,7 +717,7 @@ class Library(object):
                 isDetectedTarget = False
 
                 for DetectTarget in DetectTargetList:
-                    if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                    if DetectTarget.isMatch(self.__ReceiveData):
 
                         LoginFailCount = 0
                         self.Log(DetectTarget.getDisplayMsg())
@@ -704,13 +737,13 @@ class Library(object):
                 if not isDetectedTarget:
 
                     if LoginFailCount < MaxLoginFail:
-                        self.Log('頻道 ' + str(ConnectIndex) + ' 讀取 PTT 畫面..')
+                        self.Log(' 讀取 PTT 畫面..')
                         Refresh = True
                         LoginFailCount += 1
                         SendMessage = ''
                         continue
 
-                    self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
+                    self.__showScreen(ErrCode, sys._getframe().f_code.co_name)
                     self.Log('無法解析的狀態! PTT Library 緊急停止')
                     self.logout()
                     # sys.exit()
@@ -720,44 +753,44 @@ class Library(object):
                 self.__ErrorCode = ErrCode
                 return ErrCode
             
-            if '> (' in self.__ReceiveData[ConnectIndex]:
+            if '> (' in self.__ReceiveData:
                 self.Log('新式游標模式', LogLevel.DEBUG)
                 self.__Cursor = '>'
-                self.__isConnected[ConnectIndex] = True
+                self.__isConnected = True
                 
-            elif '●(' in self.__ReceiveData[ConnectIndex]:
+            elif '●(' in self.__ReceiveData:
                 self.Log('舊式游標模式', LogLevel.DEBUG)
                 self.__Cursor = '●'
-                self.__isConnected[ConnectIndex] = True
+                self.__isConnected = True
             else:
-                self.Log('頻道 ' + str(ConnectIndex) + ' 無法偵測游標。重新執行連線')
+                self.Log(' 無法偵測游標。重新執行連線')
                 # return ErrorCode.UnknownError
-        
+
         return ErrorCode.Success
     
     def login(self, ID='', Password=''):
         
         self.__IdleTime = 0
 
-        if ID != '':
-            self.__ID = ID
-            self.Log('使用者帳號: ' + ID)
-        if Password != '':
-            self.__Password = Password
-            TempPW = ''
+        # if ID != '':
+        #     self.__ID = ID
+        #     self.Log('使用者帳號: ' + ID)
+        # if Password != '':
+        #     self.__Password = Password
+        #     TempPW = ''
 
-            for i in range(len(Password)):
-                TempPW += '*'
+        #     for i in range(len(Password)):
+        #         TempPW += '*'
             
-            self.Log('密碼: ' + TempPW)
+        #     self.Log('密碼: ' + TempPW)
         
-        if len(self.__Password) > 8:
-            self.__Password = self.__Password[:8]
+        # if len(self.__Password) > 8:
+        #     self.__Password = self.__Password[:8]
         
-        self.__ID = self.__ID.replace('\r', '').replace('\n', '')
-        self.__Password = self.__Password.replace('\r', '').replace('\n', '')
+        # self.__ID = self.__ID.replace('\r', '').replace('\n', '')
+        # self.__Password = self.__Password.replace('\r', '').replace('\n', '')
 
-        ErrCode = self.__connectRemote(0)
+        ErrCode = self.__connectRemote()
         
         if ErrCode == ErrorCode.Success:
             self.__IdleThread = threading.Thread(target=self.__AntiLogout)
@@ -765,33 +798,35 @@ class Library(object):
         
         self.__ErrorCode = ErrCode
         return ErrCode
+
     def logout(self):
         
-        ConnectIndex = -1
+        # ConnectIndex = -1
         
         self.__IdleTime = 0
         self.__RunIdleThread = False
         
-        if ConnectIndex == -1:
+        # if ConnectIndex == -1:
             
-            self.Log('準備登出所有頻道')
+        # self.Log('準備登出所有頻道')
             
-            for index in range(self.__MaxMultiLogin):
-                self.__isConnected[index] = False
-            
-            for index in range(self.__MaxMultiLogin):
-                if self.__ConnectList[index] == None:
-                    continue
-                self.Log('頻道 ' + str(index) + ' 登出', LogLevel.DEBUG)
-                
-                SendMessage = GotoMainMenuCommand + ' g\ry\r'
+        # for index in range(self.__MaxMultiLogin):
+        self.__isConnected = False
+        
+        # for index in range(self.__MaxMultiLogin):
+            # if self.__connection[index] == None:
+                # continue
+        self.Log(' 登出', LogLevel.DEBUG)
+        
+        SendMessage = GotoMainMenuCommand + ' g\ry\r'
 
-                ErrCode, CatchIndex = self.__operatePTT(index, SendMessage=SendMessage)
-                self.Log('頻道 ' + str(index) + ' 登出成功')
+        ErrCode = self.__operatePTT(index, SendMessage=SendMessage)
+        self.Log(' 登出成功')
         
         ErrCode = ErrorCode.Success
         self.__ErrorCode = ErrCode
         return ErrCode
+
     def __getNewestPostIndex(self, Board, ConnectIndex=0, SearchType=0, Search=''):
         result = 0
         
@@ -824,14 +859,14 @@ class Library(object):
             self.__ErrorCode = ErrCode
             return ErrCode, result
 
-        # print(self.__ReceiveData[ConnectIndex])
+        # print(self.__ReceiveData)
 
-        ReceiveDataLines = self.__ReceiveData[ConnectIndex].split('\n')
+        ReceiveDataLines = self.__ReceiveData.split('\n')
         ReceiveDataLines = ReceiveDataLines[2:-1]
-        self.__ReceiveData[ConnectIndex] = '\n'.join(ReceiveDataLines)
-        self.__ReceiveData[ConnectIndex] = self.__ReceiveData[ConnectIndex][:self.__ReceiveData[ConnectIndex].find('★  ')]
+        self.__ReceiveData = '\n'.join(ReceiveDataLines)
+        self.__ReceiveData = self.__ReceiveData[:self.__ReceiveData.find('★  ')]
 
-        AllIndex = re.findall(r'\d+ ', self.__ReceiveData[ConnectIndex])
+        AllIndex = re.findall(r'\d+ ', self.__ReceiveData)
         
         if len(AllIndex) == 0:
             ErrCode = ErrorCode.UnknownError
@@ -849,7 +884,7 @@ class Library(object):
             isContinue = True
 
             for i in range(1, 3):
-                if str(IndexTemp - i) not in self.__ReceiveData[ConnectIndex]:
+                if str(IndexTemp - i) not in self.__ReceiveData:
                     isContinue = False
                     break
             
@@ -864,7 +899,7 @@ class Library(object):
         
         # 確認是否有因為上篇文章是數字結尾導致判斷錯誤的情況
         for i in range(1, 20):
-            if str(result + 1) in self.__ReceiveData[ConnectIndex]:
+            if str(result + 1) in self.__ReceiveData:
                 result += 1
             else: 
                 break
@@ -927,7 +962,7 @@ class Library(object):
             isDetectedTarget = False
 
             for DetectTarget in DetectTargetList:
-                if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTarget.isMatch(self.__ReceiveData):
                     
                     if ShowFixResult:
                         self.Log(DetectTarget.getDisplayMsg())
@@ -937,7 +972,7 @@ class Library(object):
                     
                     isDetectedTarget = True
                     if DetectTarget.isBreakDetect():
-                        self.__isConnected[ConnectIndex] = True
+                        self.__isConnected = True
                         isBreakDetect = True
                         ErrCode = DetectTarget.getErrorCode()
 
@@ -981,9 +1016,9 @@ class Library(object):
         
         # 前進至板面
 
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
 
-        if '看板《' + Board + '》' in self.__ReceiveData[ConnectIndex] and '文章選讀' in self.__ReceiveData[ConnectIndex]:
+        if '看板《' + Board + '》' in self.__ReceiveData and '文章選讀' in self.__ReceiveData:
             self.Log('已經位於 ' + Board + ' 板', LogLevel.DEBUG)
         else:
             CatchList = [
@@ -995,14 +1030,14 @@ class Library(object):
         
             ErrCode, CatchIndex = self.__operatePTT(ConnectIndex, SendMessage=SendMessage, CatchTargetList=CatchList, Refresh=True)
             if ErrCode != ErrorCode.Success:
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
                 self.__ErrorCode = ErrCode
                 return ErrCode
 
             if CatchIndex == -1:
                 self.Log('前進至 ' + Board + '板失敗')
-                print(self.__ReceiveData[ConnectIndex])
-                self.__APILock[ConnectIndex].release()
+                print(self.__ReceiveData)
+                self.__APILock.release()
 
                 ErrCode = ErrorCode.UnknownError
                 self.__ErrorCode = ErrCode
@@ -1030,7 +1065,7 @@ class Library(object):
                 Retry = False
                 RetryCount += 1
                 if RetryCount == 3:
-                    self.__APILock[ConnectIndex].release()
+                    self.__APILock.release()
                     self.__ErrorCode = ErrCode
                     return ErrCode
             else:
@@ -1038,7 +1073,7 @@ class Library(object):
 
             ErrCode, CatchIndex = self.__operatePTT(ConnectIndex, SendMessage=SendMessage, CatchTargetList=CatchList, Refresh=Refresh, ExtraWait=ExtraWait)
             if ErrCode != ErrorCode.Success:
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
                 
                 self.__ErrorCode = ErrCode
                 return ErrCode
@@ -1052,13 +1087,13 @@ class Library(object):
                 break
             elif CatchIndex == 1:
                 self.Log('你被水桶惹 QQ')
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
                 ErrCode = ErrorCode.NoPermission
                 self.__ErrorCode = ErrCode
                 return ErrCode
             else:
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex, _LogLevel=LogLevel.DEBUG)
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
                 ErrCode = ErrorCode.UnknownError
                 self.__ErrorCode = ErrCode
                 return ErrCode
@@ -1076,7 +1111,7 @@ class Library(object):
 
         ErrCode, CatchIndex = self.__operatePTT(ConnectIndex, SendMessage=SendMessage, CatchTargetList=CatchList, Refresh=Refresh, ExtraWait=ExtraWait)
         if ErrCode != ErrorCode.Success:
-            self.__APILock[ConnectIndex].release()
+            self.__APILock.release()
             self.__ErrorCode = ErrCode
             return ErrCode
 
@@ -1085,7 +1120,7 @@ class Library(object):
             SendMessage = 's\r'
         else:
             self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex, _LogLevel=LogLevel.DEBUG)
-            self.__APILock[ConnectIndex].release()
+            self.__APILock.release()
             ErrCode = ErrorCode.UnknownError
             self.__ErrorCode = ErrCode
             return ErrCode
@@ -1104,7 +1139,7 @@ class Library(object):
         while True:
             ErrCode, CatchIndex = self.__operatePTT(ConnectIndex, SendMessage=SendMessage, CatchTargetList=CatchList, Refresh=Refresh, ExtraWait=ExtraWait)
             if ErrCode != ErrorCode.Success:
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
 
                 self.__ErrorCode = ErrCode
                 return ErrCode
@@ -1118,14 +1153,14 @@ class Library(object):
                 break
             else:
                 self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex, _LogLevel=LogLevel.DEBUG)
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
 
                 ErrCode = ErrorCode.UnknownError
                 self.__ErrorCode = ErrCode
                 return ErrCode
         
-        self.__WaterBallProceeor()
-        self.__APILock[ConnectIndex].release()
+        self.__WaterBallProcessor()
+        self.__APILock.release()
         
         ErrCode = ErrorCode.Success
         self.__ErrorCode = ErrCode
@@ -1195,7 +1230,7 @@ class Library(object):
             TempStartIndex = TempEndIndex
             TempEndIndex = TempStartIndex + 1
         
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
         
         for Push in PushList:
             # print('Push:', Push)
@@ -1203,13 +1238,13 @@ class Library(object):
 
             if ErrCode != ErrorCode.Success:
                 self.__ErrorCode = ErrCode
-                self.__WaterBallProceeor()
-                self.__APILock[ConnectIndex].release()
+                self.__WaterBallProcessor()
+                self.__APILock.release()
                 return ErrCode
 
         
-        self.__WaterBallProceeor()
-        self.__APILock[ConnectIndex].release()
+        self.__WaterBallProcessor()
+        self.__APILock.release()
 
         self.__ErrorCode = ErrCode
         return ErrCode
@@ -1218,7 +1253,7 @@ class Library(object):
         ConnectIndex = 0
         SendMessage = ''
 
-        if '看板《' + Board + '》' in self.__ReceiveData[ConnectIndex] and '文章選讀' in self.__ReceiveData[ConnectIndex]:
+        if '看板《' + Board + '》' in self.__ReceiveData and '文章選讀' in self.__ReceiveData:
             self.Log('已經位於 ' + Board + ' 板', LogLevel.DEBUG)
         else:
             # 前進至板面
@@ -1258,17 +1293,17 @@ class Library(object):
                 
             self.Log('具備推文權限', LogLevel.DEBUG)
 
-            if '值得推薦' in self.__ReceiveData[ConnectIndex]:
+            if '值得推薦' in self.__ReceiveData:
                 Push = True
             else:
                 Push = False
 
-            if '給它噓聲' in self.__ReceiveData[ConnectIndex]:
+            if '給它噓聲' in self.__ReceiveData:
                 Boo = True
             else:
                 Boo = False
             
-            if '→註解' in self.__ReceiveData[ConnectIndex]:
+            if '→註解' in self.__ReceiveData:
                 Arrow = True
             else:
                 Arrow = False
@@ -1329,15 +1364,15 @@ class Library(object):
             self.__ErrorCode = ErrCode
             return ErrCode
 
-        # print(self.__ReceiveData[ConnectIndex])
+        # print(self.__ReceiveData)
         ErrCode = ErrorCode.Success
         self.__ErrorCode = ErrCode
         return ErrCode
 
-    def getPost(self, Board, PostID='', PostIndex=0, _ConnectIndex=0, SearchType=0, Search=''):
+    def getPost(self, Board, PostID='', PostIndex=0, SearchType=0, Search=''):
         self.__IdleTime = 0
         
-        ConnectIndex = _ConnectIndex
+        # ConnectIndex = _ConnectIndex
         result = None
         ErrCode = ErrorCode.Success
 
@@ -1406,34 +1441,36 @@ class Library(object):
                 Search = ''
                 SearchType = PostSearchType.Unknown
 
-        self.__APILock[ConnectIndex].acquire()
+        # self.__APILock.acquire()
+        # with self.__APILock:
 
         for i in range(3):
 
-            ErrCode, Post = self.__getPost(Board, PostID, PostIndex, _ConnectIndex, SearchType, Search)
+            ErrCode, Post = self.__getPost(Board, PostID, PostIndex, SearchType, Search)
             
             while ErrCode == ErrorCode.CaCaBeastEatPost:
-                ErrCode, Post = self.__getPost(Board, PostID, PostIndex, _ConnectIndex, SearchType, Search)
+                ErrCode, Post = self.__getPost(Board, PostID, PostIndex, SearchType, Search)
 
             if ErrCode == ErrorCode.PostDeleted:
                 if Post == None:
                     continue
-                self.__APILock[ConnectIndex].release()
+                # self.__APILock.release()
                 self.__ErrorCode = ErrCode
                 return ErrCode, Post
             
             if ErrCode != ErrorCode.Success:
                 continue
             
-            self.__APILock[ConnectIndex].release()
+            # self.__APILock.release()
             self.__ErrorCode = ErrCode
             return ErrCode, Post
 
-        self.__WaterBallProceeor()
-        self.__APILock[ConnectIndex].release()
+        self.__WaterBallProcessor()
+        # self.__APILock.release()
 
         self.__ErrorCode = ErrCode
         return ErrCode, Post
+
     def __parsePush(self, line):
         # print('__parsePush line: ' + line)
 
@@ -1491,9 +1528,9 @@ class Library(object):
         CurrentPush = Information.PushInformation(CurrentPushType, PushAuthor, PushContent, PushIP, PushTime)
 
         return ErrCode, CurrentPush
-    def __getPost(self, Board, PostID='', PostIndex=0, _ConnectIndex=0, SearchType=0, Search=''):
+    def __getPost(self, Board, PostID='', PostIndex=0, SearchType=0, Search=''):
         
-        ConnectIndex = _ConnectIndex
+        # ConnectIndex = _ConnectIndex
         result = None
 
         SendMessage = GotoMainMenuCommand + 'qs' + Board + '\r\x03\x03 '
@@ -1550,7 +1587,7 @@ class Library(object):
         ]
 
         while not isBreakDetect:
-            ErrCode, CatchIndex = self.__operatePTT(ConnectIndex, SendMessage=SendMessage, Refresh=Refresh)
+            ErrCode, CatchIndex = self.__operatePTT(SendMessage=SendMessage, Refresh=Refresh)
             if ErrCode == ErrorCode.WaitTimeout:
                 self.Log('操作超時重新嘗試')
                 break
@@ -1561,20 +1598,20 @@ class Library(object):
                 return ErrCode, None
 
             isDetectedTarget = False
-
+            
             for DetectTarget in DetectTargetList:
-                if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTarget.isMatch(self.__ReceiveData):
 
                     self.Log(DetectTarget.getDisplayMsg(), LogLevel.DEBUG)
 
                     isDetectedTarget = True
                     if DetectTarget.isBreakDetect():
-                        self.__isConnected[ConnectIndex] = True
+                        self.__isConnected = True
                         isBreakDetect = True
                         ErrCode = DetectTarget.getErrorCode()
 
                         if ErrCode == ErrorCode.PttBug:
-                            self.__connectRemote(ConnectIndex)
+                            self.__connectRemote()
                             self.__ErrorCode = ErrCode
                             return ErrCode, None
 
@@ -1587,7 +1624,7 @@ class Library(object):
 
             if not isDetectedTarget:
                 
-                for line in self.__ReceiveData[ConnectIndex].split('\n'):
+                for line in self.__ReceiveData.split('\n'):
                     # 78369    10/08 -            □ (本文已被刪除) [QQ1]
                     # 77579 s  10/06 -            □ (本文已被刪除) <QQ2>
                     if line.startswith(self.__Cursor):
@@ -1630,12 +1667,12 @@ class Library(object):
                             self.__ErrorCode = ErrCode
                             return ErrCode, result
                 
-                self.__showScreen(ErrCode, sys._getframe().f_code.co_name + ' part 1', ConnectIndex=ConnectIndex)
+                self.__showScreen(ErrCode, sys._getframe().f_code.co_name + ' part 1')
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
                 # sys.exit()
         
-        Lines = self.__ReceiveData[ConnectIndex].split('\n')
+        Lines = self.__ReceiveData.split('\n')
         InfoLines = []
         for Line in Lines:
             # print('line: ' + Line)
@@ -1740,7 +1777,7 @@ class Library(object):
         ControlCodeMode = False
         FirstControlCodePage = True
         while not isBreakDetect:
-            ErrCode, CatchIndex = self.__operatePTT(ConnectIndex, SendMessage=SendMessage, Refresh=Refresh)
+            ErrCode, CatchIndex = self.__operatePTT(SendMessage=SendMessage, Refresh=Refresh)
             if ErrCode != ErrorCode.Success:
                 self.Log('操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
                 self.__ErrorCode = ErrCode
@@ -1748,7 +1785,7 @@ class Library(object):
             
             # self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
 
-            if '◆ 此文章無內容' in self.__ReceiveData[ConnectIndex]:
+            if '◆ 此文章無內容' in self.__ReceiveData:
                 for line in Lines:
                     line = line.strip()
                     if line.startswith(self.__Cursor):
@@ -1769,7 +1806,7 @@ class Library(object):
                         if len(Parts) < 2:
                             ErrCode = ErrorCode.ParseError
                             self.__ErrorCode = ErrCode
-                            self.__WaterBallProceeor()
+                            self.__WaterBallProcessor()
                             return ErrCode, None
 
                         Title = Parts[1]
@@ -1796,25 +1833,25 @@ class Library(object):
                         
                         ErrCode = ErrorCode.PostDeleted
                         self.__ErrorCode = ErrCode
-                        self.__WaterBallProceeor()
+                        self.__WaterBallProcessor()
                         return ErrCode, result
 
             isDetectedTarget = False
 
             if FirstPage == '':
-                FirstPage = self.__ReceiveData[ConnectIndex]
+                FirstPage = self.__ReceiveData
                         
             for DetectTarget in DetectTargetList:
-                if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTarget.isMatch(self.__ReceiveData):
                     self.Log(DetectTarget.getDisplayMsg(), _LogLevel=LogLevel.DEBUG)
                                         
                     if len(PostIP) == 0:
-                        PostIP = re.findall( r'[0-9]+(?:\.[0-9]+){3}', self.__ReceiveData[ConnectIndex])
+                        PostIP = re.findall( r'[0-9]+(?:\.[0-9]+){3}', self.__ReceiveData)
                         if len(PostIP) > 0:
                             PostIP = PostIP[0]
                  
-                    CurrentPage = self.__ReceiveData[ConnectIndex]
-                    CurrentRawPage = self.__ReceiveRawData[ConnectIndex]
+                    CurrentPage = self.__ReceiveData
+                    CurrentRawPage = self.__ReceiveRawData
 
                     CurrentPageList = CurrentPage.split('\n')
                     CurrentRawPageList = CurrentRawPage.split('\n')
@@ -1890,10 +1927,10 @@ class Library(object):
 
             if not isDetectedTarget:
                 
-                if len(self.__ReceiveData[ConnectIndex]) < 500:
+                if len(self.__ReceiveData) < 500:
                     pass
 
-                self.__showScreen(ErrCode, sys._getframe().f_code.co_name + ' part 2', ConnectIndex=ConnectIndex)
+                self.__showScreen(ErrCode, sys._getframe().f_code.co_name + ' part 2')
                 self.Log('無法解析的狀態! PTT Library 緊急停止')
                 self.logout()
                 # sys.exit()
@@ -1954,7 +1991,7 @@ class Library(object):
 
         result = Information.PostInformation(Board, PostID, PostAuthor, PostDate, PostTitle, PostWeb, PostMoney,PostContent, PostIP, PostPushList, PosRawData, ListDate=ListDate, DeleteStatus=PostDeleteStatus.NotDeleted)
 
-        self.__WaterBallProceeor()
+        self.__WaterBallProcessor()
         self.__ErrorCode = ErrCode
         return ErrCode, result
 
@@ -2009,7 +2046,7 @@ class Library(object):
             PTTBUGDetectUnit
         ]
         
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
         while not isBreakDetect:
             ErrCode, CatchIndex = self.__operatePTT(ConnectIndex, SendMessage=SendMessage, Refresh=Refresh)
             if ErrCode == ErrorCode.WaitTimeout:
@@ -2017,14 +2054,14 @@ class Library(object):
                 break
             elif ErrCode != ErrorCode.Success:
                 self.Log('操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
                 self.__ErrorCode = ErrCode
                 return ErrCode
             
             isDetectedTarget = False
 
             for i in range(len(DetectTargetList)):
-                if DetectTargetList[i].isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTargetList[i].isMatch(self.__ReceiveData):
                     self.Log(DetectTargetList[i].getDisplayMsg())
 
                     SendMessage = DetectTargetList[i].getResponse().getSendMessage()
@@ -2054,7 +2091,7 @@ class Library(object):
                 self.logout()
                 # sys.exit()
         if ErrCode != ErrorCode.Success:
-            self.__APILock[ConnectIndex].release()
+            self.__APILock.release()
             self.__ErrorCode = ErrCode
             return ErrCode
         
@@ -2115,7 +2152,7 @@ class Library(object):
                 break
             elif ErrCode != ErrorCode.Success:
                 self.Log('操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
                 self.__ErrorCode = ErrCode
                 return ErrCode
             
@@ -2124,7 +2161,7 @@ class Library(object):
             isDetectedTarget = False
 
             for i in range(len(DetectTargetList)):
-                if DetectTargetList[i].isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTargetList[i].isMatch(self.__ReceiveData):
                     self.Log(DetectTargetList[i].getDisplayMsg())
 
                     SendMessage = DetectTargetList[i].getResponse().getSendMessage()
@@ -2143,8 +2180,8 @@ class Library(object):
                 self.logout()
                 # sys.exit()
         
-        self.__APILock[ConnectIndex].release()
-        self.__WaterBallProceeor()
+        self.__APILock.release()
+        self.__WaterBallProcessor()
 
         self.__ErrorCode = ErrCode
         return ErrCode
@@ -2156,15 +2193,15 @@ class Library(object):
         if not self.__APICheck(sys._getframe().f_code.co_name):
             return self.__ErrorCode, result
 
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
 
         for i in range(3):
             ErrCode, result = self.__getTime()
             if ErrCode == ErrorCode.WaitTimeout or ErrCode == ErrorCode.Success:
                 break
         
-        self.__APILock[ConnectIndex].release()
-        self.__WaterBallProceeor()
+        self.__APILock.release()
+        self.__WaterBallProcessor()
 
         self.__ErrorCode = ErrCode
         return ErrCode, result
@@ -2205,7 +2242,7 @@ class Library(object):
             isDetectedTarget = False
 
             for DetectTarget in DetectTargetList:
-                if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTarget.isMatch(self.__ReceiveData):
                     self.Log(DetectTarget.getDisplayMsg(), _LogLevel=LogLevel.DEBUG)
 
                     SendMessage = DetectTarget.getResponse().getSendMessage()
@@ -2228,7 +2265,7 @@ class Library(object):
             self.__ErrorCode = ErrCode
             return ErrCode, result
         
-        LastLine = self.__ReceiveData[ConnectIndex].split('\n')
+        LastLine = self.__ReceiveData.split('\n')
         LastLine = [x for x in LastLine if x.strip().startswith('[')]
         
         if len(LastLine) == 0:
@@ -2261,7 +2298,7 @@ class Library(object):
             self.__ErrorCode = ErrCode
             return ErrCode, result
         
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
 
         SendMessage = '\x1b\x4fD\x1b\x4fD\x1b\x4fD\x1b\x4fDT\rQ\r' + UserID + '\r'
         Refresh = True
@@ -2289,12 +2326,12 @@ class Library(object):
             ErrCode, CatchIndex = self.__operatePTT(ConnectIndex, SendMessage=SendMessage, Refresh=Refresh)
             if ErrCode == ErrorCode.WaitTimeout:
                 self.Log('超時')
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
                 self.__ErrorCode = ErrCode
                 return ErrCode, result
             elif ErrCode != ErrorCode.Success:
                 self.Log('操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
                 self.__ErrorCode = ErrCode
                 return ErrCode, result
             
@@ -2303,7 +2340,7 @@ class Library(object):
             isDetectedTarget = False
 
             for DetectTarget in DetectTargetList:
-                if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTarget.isMatch(self.__ReceiveData):
                     self.Log(DetectTarget.getDisplayMsg(), _LogLevel=LogLevel.DEBUG)
 
                     SendMessage = DetectTarget.getResponse().getSendMessage()
@@ -2321,11 +2358,11 @@ class Library(object):
                 self.logout()
                 # sys.exit()
         if ErrCode != ErrorCode.Success:
-            self.__APILock[ConnectIndex].release()
+            self.__APILock.release()
             self.__ErrorCode = ErrCode
             return ErrCode, result
         
-        UserPageList = self.__ReceiveData[ConnectIndex].split('\n')
+        UserPageList = self.__ReceiveData.split('\n')
         # for i in range(len(UserPageList)):
         #     print('Q', UserPageList[i])
         
@@ -2392,8 +2429,8 @@ class Library(object):
 
         result = Information.UserInformation(ID, Money, LoginTime, LegalPost, IllegalPost, State, Mail, LastLogin, LastIP, FiveChess, Chess)
         
-        self.__APILock[ConnectIndex].release()
-        self.__WaterBallProceeor()
+        self.__APILock.release()
+        self.__WaterBallProcessor()
 
         ErrCode = ErrorCode.Success
         self.__ErrorCode = ErrCode
@@ -2445,7 +2482,7 @@ class Library(object):
                 Search = ''
                 SearchType = PostSearchType.Unknown
 
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
         if Board == '':
 
             SendMessage = GotoMainMenuCommand + ' \x1aM0\r$'
@@ -2468,13 +2505,13 @@ class Library(object):
                 ErrCode, CatchIndex = self.__operatePTT(ConnectIndex, SendMessage=SendMessage, Refresh=Refresh)
                 if ErrCode == ErrorCode.WaitTimeout:
                     self.Log('超時')
-                    self.__APILock[ConnectIndex].release()
+                    self.__APILock.release()
                     
                     self.__ErrorCode = ErrCode
                     return ErrCode, result
                 elif ErrCode != ErrorCode.Success:
                     self.Log('操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                    self.__APILock[ConnectIndex].release()
+                    self.__APILock.release()
                     
                     self.__ErrorCode = ErrCode
                     return ErrCode, result
@@ -2484,7 +2521,7 @@ class Library(object):
                 isDetectedTarget = False
 
                 for DetectTarget in DetectTargetList:
-                    if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                    if DetectTarget.isMatch(self.__ReceiveData):
                         self.Log(DetectTarget.getDisplayMsg(), _LogLevel=LogLevel.DEBUG)
 
                         SendMessage = DetectTarget.getResponse().getSendMessage()
@@ -2502,11 +2539,11 @@ class Library(object):
                     self.logout()
                     # sys.exit()
             if ErrCode != ErrorCode.Success:
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
                 self.__ErrorCode = ErrCode
                 return ErrCode, result
 
-            MailBoxLineList = self.__ReceiveData[ConnectIndex].split('\n')
+            MailBoxLineList = self.__ReceiveData.split('\n')
 
             # for i in range(len(MailBoxLineList)):
             #     print('line', i,MailBoxLineList[i])
@@ -2516,18 +2553,18 @@ class Library(object):
         else:
             
             if not self.__APICheck(sys._getframe().f_code.co_name):
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
                 return self.__ErrorCode, result
 
             for i in range(3):
                 ErrCode, result = self.__getNewestPostIndex(Board=Board, SearchType=SearchType, Search=Search)
                 if ErrCode == ErrorCode.Success:
-                    self.__APILock[ConnectIndex].release()
+                    self.__APILock.release()
                     self.__ErrorCode = ErrCode
                     return ErrCode, result
         
-        self.__APILock[ConnectIndex].release()
-        self.__WaterBallProceeor()
+        self.__APILock.release()
+        self.__WaterBallProcessor()
 
         ErrCode = ErrorCode.Success
         self.__ErrorCode = ErrCode
@@ -2574,7 +2611,7 @@ class Library(object):
         else:
             self.Log('信箱中最新郵件編號: ' + str(NewestMailIndex), LogLevel.DEBUG)
 
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
 
         SendMessage = str(MailIndex) + '\r\r'
         Refresh = True
@@ -2610,13 +2647,13 @@ class Library(object):
             ErrCode, CatchIndex = self.__operatePTT(ConnectIndex, SendMessage=SendMessage, Refresh=Refresh)
             if ErrCode == ErrorCode.WaitTimeout:
                 self.Log('超時')
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
 
                 self.__ErrorCode = ErrCode
                 return ErrCode, result
             elif ErrCode != ErrorCode.Success:
                 self.Log('操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
                 
                 self.__ErrorCode = ErrCode
                 return ErrCode, result
@@ -2626,16 +2663,16 @@ class Library(object):
             isDetectedTarget = False
 
             if FirstPage == '':
-                FirstPage = self.__ReceiveData[ConnectIndex]
+                FirstPage = self.__ReceiveData
             
             for DetectTarget in DetectTargetList:
-                if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTarget.isMatch(self.__ReceiveData):
                     self.Log(DetectTarget.getDisplayMsg(), _LogLevel=LogLevel.DEBUG)
                     
                     # self.__showScreen(ErrCode, sys._getframe().f_code.co_name, ConnectIndex=ConnectIndex)
                     
-                    CurrentPage = self.__ReceiveData[ConnectIndex]
-                    CurrentRawPage = list(self.__ReceiveRawData[ConnectIndex])
+                    CurrentPage = self.__ReceiveData
+                    CurrentRawPage = list(self.__ReceiveRawData)
 
                     CurrentPageList = CurrentPage.split('\n')
 
@@ -2695,7 +2732,7 @@ class Library(object):
                 self.logout()
                 # sys.exit()
         if ErrCode != ErrorCode.Success:
-            self.__APILock[ConnectIndex].release()
+            self.__APILock.release()
             self.__ErrorCode = ErrCode
             return ErrCode, result
 
@@ -2756,8 +2793,8 @@ class Library(object):
 
         result = Information.MailInformation(MailAuthor, MailTitle, MailDate, MailContent, MailIP, MailRawContent)
 
-        self.__APILock[ConnectIndex].release()
-        self.__WaterBallProceeor()
+        self.__APILock.release()
+        self.__WaterBallProcessor()
 
         ErrCode = ErrorCode.Success
         self.__ErrorCode = ErrCode
@@ -2780,7 +2817,7 @@ class Library(object):
             self.__ErrorCode = ErrCode
             return ErrCode
             
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
 
         # 前進至主頁面
         SendMessage = '\x1b\x4fD\x1b\x4fD\x1b\x4fD\x1b\x4fD'
@@ -2850,7 +2887,7 @@ class Library(object):
                 break
             elif ErrCode != ErrorCode.Success:
                 self.Log('登入操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
 
                 self.__ErrorCode = ErrCode
                 return ErrCode
@@ -2858,7 +2895,7 @@ class Library(object):
             isDetectedTarget = False
 
             for DetectTarget in DetectTargetList:
-                if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTarget.isMatch(self.__ReceiveData):
 
                     self.Log(DetectTarget.getDisplayMsg())
 
@@ -2867,7 +2904,7 @@ class Library(object):
                     
                     isDetectedTarget = True
                     if DetectTarget.isBreakDetect():
-                        self.__isConnected[ConnectIndex] = True
+                        self.__isConnected = True
                         isBreakDetect = True
                         ErrCode = DetectTarget.getErrorCode()
                         break
@@ -2877,8 +2914,8 @@ class Library(object):
                 self.logout()
                 # sys.exit()
         
-        self.__APILock[ConnectIndex].release()
-        self.__WaterBallProceeor()
+        self.__APILock.release()
+        self.__WaterBallProcessor()
 
         self.__ErrorCode = ErrCode
         return ErrCode
@@ -2907,7 +2944,7 @@ class Library(object):
             while len(NewPassword) > 8:
                 NewPassword = NewPassword[:-1]
         
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
 
         # 前進至主頁面
         SendMessage = '\x1b\x4fD\x1b\x4fD\x1b\x4fD\x1b\x4fD'
@@ -2970,7 +3007,7 @@ class Library(object):
                 break
             elif ErrCode != ErrorCode.Success:
                 self.Log('操作操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
 
                 self.__ErrorCode = ErrCode
                 return ErrCode
@@ -2978,7 +3015,7 @@ class Library(object):
             isDetectedTarget = False
 
             for DetectTarget in DetectTargetList:
-                if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTarget.isMatch(self.__ReceiveData):
 
                     self.Log(DetectTarget.getDisplayMsg(), DetectTarget.getLogLevel())
 
@@ -2987,7 +3024,7 @@ class Library(object):
                     
                     isDetectedTarget = True
                     if DetectTarget.isBreakDetect():
-                        self.__isConnected[ConnectIndex] = True
+                        self.__isConnected = True
                         isBreakDetect = True
                         ErrCode = DetectTarget.getErrorCode()
                         break
@@ -3000,8 +3037,8 @@ class Library(object):
                 self.logout()
                 # sys.exit()
         
-        self.__APILock[ConnectIndex].release()
-        self.__WaterBallProceeor()
+        self.__APILock.release()
+        self.__WaterBallProcessor()
 
         self.__ErrorCode = ErrCode
         return ErrCode
@@ -3045,7 +3082,7 @@ class Library(object):
             self.__ErrorCode = ErrCode
             return ErrCode
         
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
 
         Board = str(Board)
         Content = str(Content)
@@ -3106,7 +3143,7 @@ class Library(object):
                 break
             elif ErrCode != ErrorCode.Success:
                 self.Log('操作操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
 
                 self.__ErrorCode = ErrCode
                 return ErrCode
@@ -3114,7 +3151,7 @@ class Library(object):
             isDetectedTarget = False
 
             for DetectTarget in DetectTargetList:
-                if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTarget.isMatch(self.__ReceiveData):
 
                     self.Log(DetectTarget.getDisplayMsg())
 
@@ -3126,7 +3163,7 @@ class Library(object):
                     
                     isDetectedTarget = True
                     if DetectTarget.isBreakDetect():
-                        self.__isConnected[ConnectIndex] = True
+                        self.__isConnected = True
                         isBreakDetect = True
                         ErrCode = DetectTarget.getErrorCode()
                         break
@@ -3146,172 +3183,172 @@ class Library(object):
                 self.logout()
                 # sys.exit()
         
-        self.__APILock[ConnectIndex].release()
-        self.__WaterBallProceeor()
+        self.__APILock.release()
+        self.__WaterBallProcessor()
 
         self.__ErrorCode = ErrCode
         return ErrCode
-    def __crawlBoardThread(self, ConnectIndex, Board, PostHandler, StartIndex, EndIndex, SearchType, Search):
-        self.Log('連線頻道 ' + str(ConnectIndex) + ' ' + Board + ' 爬行 ' + str(StartIndex) + ' ' + str(EndIndex))
+    # def __crawlBoardThread(self, ConnectIndex, Board, PostHandler, StartIndex, EndIndex, SearchType, Search):
+    #     self.Log('連線頻道 ' + str(ConnectIndex) + ' ' + Board + ' 爬行 ' + str(StartIndex) + ' ' + str(EndIndex))
 
-        if not self.__isConnected[ConnectIndex] and ConnectIndex > 0:
-            # self.__CrawLock.acquire()
-            self.__connectRemote(ConnectIndex)
-            self.__EnableLoginCount += 1
-            # self.__CrawLock.release()
+    #     if not self.__isConnected and ConnectIndex > 0:
+    #         # self.__CrawLock.acquire()
+    #         self.__connectRemote(ConnectIndex)
+    #         self.__EnableLoginCount += 1
+    #         # self.__CrawLock.release()
         
-        while self.__EnableLoginCount < self.__EnableLogin:
-            time.sleep(1)
+    #     while self.__EnableLoginCount < self.__EnableLogin:
+    #         time.sleep(1)
 
-        for PostIndex in range(StartIndex, EndIndex):
-            self.__IdleTime = 0
+    #     for PostIndex in range(StartIndex, EndIndex):
+    #         self.__IdleTime = 0
 
-            ErrCode, Post = self.getPost(Board, PostIndex=PostIndex, _ConnectIndex=ConnectIndex, SearchType=SearchType, Search=Search)
+    #         ErrCode, Post = self.getPost(Board, PostIndex=PostIndex, _ConnectIndex=ConnectIndex, SearchType=SearchType, Search=Search)
 
-            if not self.__isBackground:
-                self.__ProgressBarCount += 1
-                self.__ProgressBar.update(self.__ProgressBarCount)
+    #         if not self.__isBackground:
+    #             self.__ProgressBarCount += 1
+    #             self.__ProgressBar.update(self.__ProgressBarCount)
             
-            if ErrCode == ErrorCode.PostDeleted:
-                self.__DeleteCrawCount += 1
-            elif ErrCode != ErrorCode.Success:
-                self.__ErrorGetPostList.append([ErrCode, Board, PostIndex])
-                continue
+    #         if ErrCode == ErrorCode.PostDeleted:
+    #             self.__DeleteCrawCount += 1
+    #         elif ErrCode != ErrorCode.Success:
+    #             self.__ErrorGetPostList.append([ErrCode, Board, PostIndex])
+    #             continue
             
-            self.__SuccessCrawCount += 1
+    #         self.__SuccessCrawCount += 1
             
-            self.__CrawLock.acquire()
-            # self.Log(Post.getTitle())
-            try:
-                PostHandler(Post)
-            except TypeError:
-                self.Log('PostHandler 介面錯誤', LogLevel.WARNING)
-            except:
-                self.Log('PostHandler 未知錯誤', LogLevel.WARNING)
+    #         self.__CrawLock.acquire()
+    #         # self.Log(Post.getTitle())
+    #         try:
+    #             PostHandler(Post)
+    #         except TypeError:
+    #             self.Log('PostHandler 介面錯誤', LogLevel.WARNING)
+    #         except:
+    #             self.Log('PostHandler 未知錯誤', LogLevel.WARNING)
 
-            self.__CrawLock.release()
+    #         self.__CrawLock.release()
         
-        self.Log('頻道 ' + str(ConnectIndex) + ' 爬行完畢', LogLevel.DEBUG)
-        return
-    def crawlBoard(self, Board, PostHandler, MaxMultiLogin=0, StartIndex=0, EndIndex=0, SearchType=0, Search='', MaxThreadPost=100):
-        ErrCode = ErrorCode.Success
+    #     self.Log(' 爬行完畢', LogLevel.DEBUG)
+    #     return
+    # def crawlBoard(self, Board, PostHandler, MaxMultiLogin=0, StartIndex=0, EndIndex=0, SearchType=0, Search='', MaxThreadPost=100):
+    #     ErrCode = ErrorCode.Success
 
-        if not self.__APICheck(sys._getframe().f_code.co_name):
-            return self.__ErrorCode, 0, 0
+    #     if not self.__APICheck(sys._getframe().f_code.co_name):
+    #         return self.__ErrorCode, 0, 0
 
-        try:
-            Board = str(Board)
-            StartIndex = int(StartIndex)
-            EndIndex = int(EndIndex)
-            MaxMultiLogin = int(MaxMultiLogin)
-            Search = str(Search)
-            MaxThreadPost = int(MaxThreadPost)
-        except:
-            self.Log('輸入錯誤', LogLevel.WARNING)
+    #     try:
+    #         Board = str(Board)
+    #         StartIndex = int(StartIndex)
+    #         EndIndex = int(EndIndex)
+    #         MaxMultiLogin = int(MaxMultiLogin)
+    #         Search = str(Search)
+    #         MaxThreadPost = int(MaxThreadPost)
+    #     except:
+    #         self.Log('輸入錯誤', LogLevel.WARNING)
 
-            ErrCode = ErrorCode.ErrorInput
-            self.__ErrorCode = ErrCode
-            return ErrCode, 0, 0
+    #         ErrCode = ErrorCode.ErrorInput
+    #         self.__ErrorCode = ErrCode
+    #         return ErrCode, 0, 0
 
-        if MaxMultiLogin < 0 or 5 < MaxMultiLogin:
-            self.Log('多重登入設定錯誤', LogLevel.WARNING)
-            ErrCode = ErrorCode.ErrorInput
-            self.__ErrorCode = ErrCode
-            return ErrCode, 0, 0
+    #     if MaxMultiLogin < 0 or 5 < MaxMultiLogin:
+    #         self.Log('多重登入設定錯誤', LogLevel.WARNING)
+    #         ErrCode = ErrorCode.ErrorInput
+    #         self.__ErrorCode = ErrCode
+    #         return ErrCode, 0, 0
         
-        if MaxThreadPost < 1:
-            self.Log('每個線程負責文章數設定錯誤', LogLevel.WARNING)
-            ErrCode = ErrorCode.ErrorInput
-            self.__ErrorCode = ErrCode
-            return ErrCode, 0, 0
+    #     if MaxThreadPost < 1:
+    #         self.Log('每個線程負責文章數設定錯誤', LogLevel.WARNING)
+    #         ErrCode = ErrorCode.ErrorInput
+    #         self.__ErrorCode = ErrCode
+    #         return ErrCode, 0, 0
 
-        self.__MaxMultiLogin = MaxMultiLogin
+    #     self.__MaxMultiLogin = MaxMultiLogin
 
-        ErrCode, NewestIndex = self.getNewestIndex(Board=Board, SearchType=SearchType, Search=Search)
-        if ErrCode != ErrorCode.Success:
-            self.__ErrorCode = ErrCode
-            return ErrCode, 0, 0
+    #     ErrCode, NewestIndex = self.getNewestIndex(Board=Board, SearchType=SearchType, Search=Search)
+    #     if ErrCode != ErrorCode.Success:
+    #         self.__ErrorCode = ErrCode
+    #         return ErrCode, 0, 0
         
-        if StartIndex == 0 and EndIndex == 0:
-            StartIndex = 1
-            EndIndex = NewestIndex
-        elif StartIndex < 1 or NewestIndex < StartIndex:
-            self.Log('文章編號區間輸入錯誤: 開始標記不在 ' + Board + ' 板範圍中', LogLevel.WARNING)
-            ErrCode = ErrorCode.ErrorInput
-            self.__ErrorCode = ErrCode
-            return ErrCode, 0, 0
-        elif EndIndex < 1 or NewestIndex < EndIndex:
-            self.Log('文章編號區間輸入錯誤: 結束標記不在 ' + Board + ' 板範圍中', LogLevel.WARNING)
-            ErrCode = ErrorCode.ErrorInput
-            self.__ErrorCode = ErrCode
-            return ErrCode, 0, 0
-        elif EndIndex < StartIndex:
-            self.Log('文章編號區間輸入錯誤: 開始標記比結束標記大', LogLevel.WARNING)
-            ErrCode = ErrorCode.ErrorInput
-            self.__ErrorCode = ErrCode
-            return ErrCode, 0, 0
+    #     if StartIndex == 0 and EndIndex == 0:
+    #         StartIndex = 1
+    #         EndIndex = NewestIndex
+    #     elif StartIndex < 1 or NewestIndex < StartIndex:
+    #         self.Log('文章編號區間輸入錯誤: 開始標記不在 ' + Board + ' 板範圍中', LogLevel.WARNING)
+    #         ErrCode = ErrorCode.ErrorInput
+    #         self.__ErrorCode = ErrCode
+    #         return ErrCode, 0, 0
+    #     elif EndIndex < 1 or NewestIndex < EndIndex:
+    #         self.Log('文章編號區間輸入錯誤: 結束標記不在 ' + Board + ' 板範圍中', LogLevel.WARNING)
+    #         ErrCode = ErrorCode.ErrorInput
+    #         self.__ErrorCode = ErrCode
+    #         return ErrCode, 0, 0
+    #     elif EndIndex < StartIndex:
+    #         self.Log('文章編號區間輸入錯誤: 開始標記比結束標記大', LogLevel.WARNING)
+    #         ErrCode = ErrorCode.ErrorInput
+    #         self.__ErrorCode = ErrCode
+    #         return ErrCode, 0, 0
 
-        self.__CrawLock = threading.Lock()
-        self.__TotalPost = EndIndex - StartIndex + 1
-        self.__EnableLogin = 1
-        self.__SuccessCrawCount = 0
-        self.__DeleteCrawCount = 0
-        self.__ErrorGetPostList = []
+    #     self.__CrawLock = threading.Lock()
+    #     self.__TotalPost = EndIndex - StartIndex + 1
+    #     self.__EnableLogin = 1
+    #     self.__SuccessCrawCount = 0
+    #     self.__DeleteCrawCount = 0
+    #     self.__ErrorGetPostList = []
 
-        if not self.__isBackground:
-            self.__ProgressBar = progressbar.ProgressBar(max_value=self.__TotalPost)
-            self.__ProgressBarCount = 0
+    #     if not self.__isBackground:
+    #         self.__ProgressBar = progressbar.ProgressBar(max_value=self.__TotalPost)
+    #         self.__ProgressBarCount = 0
 
-        self.Log('總爬行文章: ' + str(self.__TotalPost) + ' 篇')
+    #     self.Log('總爬行文章: ' + str(self.__TotalPost) + ' 篇')
 
-        if self.__MaxMultiLogin > 0:
+    #     if self.__MaxMultiLogin > 0:
 
-            TempStr = '啟動連線頻道 '
-            for i in range(self.__MaxMultiLogin):
-                if (i + 1) * MaxThreadPost <= self.__TotalPost:
-                    self.__EnableLogin += 1
-                    TempStr += str(i) + ' '
-            self.Log(TempStr)
+    #         TempStr = '啟動連線頻道 '
+    #         for i in range(self.__MaxMultiLogin):
+    #             if (i + 1) * MaxThreadPost <= self.__TotalPost:
+    #                 self.__EnableLogin += 1
+    #                 TempStr += str(i) + ' '
+    #         self.Log(TempStr)
 
-        self.__CrawPoolList = []
-        CrawThreadList = []
-        Basic = int(self.__TotalPost / self.__EnableLogin)
-        LastEndIndexTemp = StartIndex
-        for i in range(0, self.__EnableLogin):
-            StartIndexTemp = LastEndIndexTemp
-            EndIndexTemp = (i + 1) * Basic + StartIndex
-            if self.__TotalPost % self.__EnableLogin > i:
-                EndIndexTemp += 1
-            LastEndIndexTemp = EndIndexTemp
+    #     self.__CrawPoolList = []
+    #     CrawThreadList = []
+    #     Basic = int(self.__TotalPost / self.__EnableLogin)
+    #     LastEndIndexTemp = StartIndex
+    #     for i in range(0, self.__EnableLogin):
+    #         StartIndexTemp = LastEndIndexTemp
+    #         EndIndexTemp = (i + 1) * Basic + StartIndex
+    #         if self.__TotalPost % self.__EnableLogin > i:
+    #             EndIndexTemp += 1
+    #         LastEndIndexTemp = EndIndexTemp
 
-            # self.Log(str(StartIndexTemp) + ' ' + str(EndIndexTemp) + ':' + str(EndIndexTemp - StartIndexTemp))
-            # self.__CrawPoolList.append([StartIndexTemp, EndIndexTemp])
-            CrawThreadList.append(threading.Thread(target=self.__crawlBoardThread, args=(i, Board, PostHandler, StartIndexTemp, EndIndexTemp, SearchType, Search)))
+    #         # self.Log(str(StartIndexTemp) + ' ' + str(EndIndexTemp) + ':' + str(EndIndexTemp - StartIndexTemp))
+    #         # self.__CrawPoolList.append([StartIndexTemp, EndIndexTemp])
+    #         CrawThreadList.append(threading.Thread(target=self.__crawlBoardThread, args=(i, Board, PostHandler, StartIndexTemp, EndIndexTemp, SearchType, Search)))
         
-        self.__EnableLoginCount = 1
+    #     self.__EnableLoginCount = 1
 
-        for SubThread in CrawThreadList:
-            SubThread.start()
-        for SubThread in CrawThreadList:
-            SubThread.join()
+    #     for SubThread in CrawThreadList:
+    #         SubThread.start()
+    #     for SubThread in CrawThreadList:
+    #         SubThread.join()
         
-        if not self.__isBackground:
-            self.__ProgressBar.update(self.__TotalPost)
-            self.__ProgressBar.finish()
+    #     if not self.__isBackground:
+    #         self.__ProgressBar.update(self.__TotalPost)
+    #         self.__ProgressBar.finish()
         
-        for ErrorEvent in self.__ErrorGetPostList:
-            self.Log('-----------------', LogLevel.DEBUG)
-            self.Log(ErrorEvent[0], LogLevel.DEBUG)
-            self.Log(ErrorEvent[1], LogLevel.DEBUG)
-            self.Log(ErrorEvent[2], LogLevel.DEBUG)
+    #     for ErrorEvent in self.__ErrorGetPostList:
+    #         self.Log('-----------------', LogLevel.DEBUG)
+    #         self.Log(ErrorEvent[0], LogLevel.DEBUG)
+    #         self.Log(ErrorEvent[1], LogLevel.DEBUG)
+    #         self.Log(ErrorEvent[2], LogLevel.DEBUG)
         
-        if len(self.__ErrorGetPostList) != 0:
-            self.Log('-----------------', LogLevel.DEBUG)
+    #     if len(self.__ErrorGetPostList) != 0:
+    #         self.Log('-----------------', LogLevel.DEBUG)
         
-        self.__WaterBallProceeor()
+    #     self.__WaterBallProcessor()
 
-        self.__ErrorCode = ErrCode
-        return ErrCode, self.__SuccessCrawCount, self.__DeleteCrawCount
+    #     self.__ErrorCode = ErrCode
+    #     return ErrCode, self.__SuccessCrawCount, self.__DeleteCrawCount
     
     def throwWaterBall(self, WaterBallTarget, WaterBallContent):
         self.__IdleTime = 0
@@ -3343,7 +3380,7 @@ class Library(object):
             self.__ErrorCode = ErrCode
             return ErrCode
         
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
 
         # 前進至主頁面
         SendMessage = GotoMainMenuCommand
@@ -3381,7 +3418,7 @@ class Library(object):
                 break
             elif ErrCode != ErrorCode.Success:
                 self.Log('操作操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
 
                 self.__ErrorCode = ErrCode
                 return ErrCode
@@ -3390,7 +3427,7 @@ class Library(object):
             isDetectedTarget = False
 
             for DetectTarget in DetectTargetList:
-                if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTarget.isMatch(self.__ReceiveData):
 
                     self.Log(DetectTarget.getDisplayMsg())
 
@@ -3410,8 +3447,8 @@ class Library(object):
                 self.logout()
                 # sys.exit()
         
-        self.__APILock[ConnectIndex].release()
-        self.__WaterBallProceeor()
+        self.__APILock.release()
+        self.__WaterBallProcessor()
         
         self.__ErrorCode = ErrCode
         return ErrCode
@@ -3466,7 +3503,7 @@ class Library(object):
             self.__ErrorCode = ErrCode
             return ErrCode
         
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
 
         SendMessage = '\x1b\x4fD\x1b\x4fD\x1b\x4fD\x1b\x4fDqs' + Board + '\r\x03\x03 '
         # 前進至文章
@@ -3508,7 +3545,7 @@ class Library(object):
                 break
             elif ErrCode != ErrorCode.Success:
                 self.Log('操作操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
 
                 self.__ErrorCode = ErrCode
                 return ErrCode
@@ -3516,7 +3553,7 @@ class Library(object):
             isDetectedTarget = False
             
             for DetectTarget in DetectTargetList:
-                if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTarget.isMatch(self.__ReceiveData):
                     isDetectedTarget = True
                     
                     self.Log(DetectTarget.getDisplayMsg())
@@ -3538,8 +3575,8 @@ class Library(object):
                 self.logout()
                 # sys.exit()
 
-        self.__WaterBallProceeor()
-        self.__APILock[ConnectIndex].release()
+        self.__WaterBallProcessor()
+        self.__APILock.release()
 
         self.__ErrorCode = ErrCode
         return ErrCode
@@ -3602,7 +3639,7 @@ class Library(object):
                 self.__ErrorCode = ErrCode
                 return ErrCode, result
 
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
 
         SendMessage = GotoMainMenuCommand + 'N\r'
 
@@ -3706,7 +3743,7 @@ class Library(object):
                 break
             elif ErrCode != ErrorCode.Success:
                 self.Log('操作操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
 
                 self.__ErrorCode = ErrCode
                 return ErrCode, result
@@ -3714,13 +3751,13 @@ class Library(object):
             isDetectedTarget = False
             
             for DetectTarget in DetectTargetList:
-                if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTarget.isMatch(self.__ReceiveData):
                     isDetectedTarget = True
                     
                     self.Log(DetectTarget.getDisplayMsg())
 
                     if '解析名單' == DetectTarget.getDisplayMsg():
-                        ListPage = self.__ReceiveData[ConnectIndex]
+                        ListPage = self.__ReceiveData
 
                     if DetectTarget.isBreakDetect():
                         isBreakDetect = True
@@ -3750,8 +3787,8 @@ class Library(object):
                 TempList = list(filter(None, TempList))
                 result.extend(TempList)
 
-        self.__WaterBallProceeor()
-        self.__APILock[ConnectIndex].release()
+        self.__WaterBallProcessor()
+        self.__APILock.release()
 
         self.__ErrorCode = ErrCode
         return ErrCode, result
@@ -3783,7 +3820,7 @@ class Library(object):
             self.__ErrorCode = ErrCode
             return ErrCode, result
 
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
 
         SendMessage = GotoMainMenuCommand + 'T\rD\r'
 
@@ -3843,7 +3880,7 @@ class Library(object):
                 break
             elif ErrCode != ErrorCode.Success:
                 self.Log('操作操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
 
                 self.__ErrorCode = ErrCode
                 return ErrCode, result
@@ -3851,7 +3888,7 @@ class Library(object):
             isDetectedTarget = False
 
             for DetectTarget in DetectTargetList:
-                if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTarget.isMatch(self.__ReceiveData):
                     isDetectedTarget = True
                     
                     self.Log(DetectTarget.getDisplayMsg())
@@ -3862,7 +3899,7 @@ class Library(object):
                         NoMsg = True
                         break
 
-                    CurrentPage = self.__ReceiveData[ConnectIndex]
+                    CurrentPage = self.__ReceiveData
                     if CurrentPage.startswith('[2J'):
                         CurrentPage = CurrentPage[3:]
 
@@ -3968,7 +4005,7 @@ class Library(object):
                     break
                 elif ErrCode != ErrorCode.Success:
                     self.Log('操作操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                    self.__APILock[ConnectIndex].release()
+                    self.__APILock.release()
 
                     self.__ErrorCode = ErrCode
                     return ErrCode, result
@@ -3976,7 +4013,7 @@ class Library(object):
                 isDetectedTarget = False
                 
                 for DetectTarget in DetectTargetList:
-                    if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                    if DetectTarget.isMatch(self.__ReceiveData):
                         isDetectedTarget = True
                         
                         self.Log(DetectTarget.getDisplayMsg())
@@ -3997,8 +4034,8 @@ class Library(object):
                     self.logout()
                     # sys.exit()
 
-        self.__WaterBallProceeor()
-        self.__APILock[ConnectIndex].release()
+        self.__WaterBallProcessor()
+        self.__APILock.release()
 
         self.__ErrorCode = ErrCode
         return ErrCode, result
@@ -4022,7 +4059,7 @@ class Library(object):
             self.__ErrorCode = ErrCode
             return ErrCode
 
-        self.__APILock[ConnectIndex].acquire()
+        self.__APILock.acquire()
 
         SendMessage = ''
         
@@ -4040,7 +4077,7 @@ class Library(object):
                 break
             elif ErrCode != ErrorCode.Success:
                 self.Log('操作操作失敗 錯誤碼: ' + str(ErrCode), LogLevel.DEBUG)
-                self.__APILock[ConnectIndex].release()
+                self.__APILock.release()
 
                 self.__ErrorCode = ErrCode
                 return ErrCode
@@ -4048,7 +4085,7 @@ class Library(object):
             isDetectedTarget = False
             
             for DetectTarget in DetectTargetList:
-                if DetectTarget.isMatch(self.__ReceiveData[ConnectIndex]):
+                if DetectTarget.isMatch(self.__ReceiveData):
                     isDetectedTarget = True
                     
                     self.Log(DetectTarget.getDisplayMsg())
@@ -4067,7 +4104,7 @@ class Library(object):
                 self.logout()
                 # sys.exit()
 
-        self.__APILock[ConnectIndex].release()
+        self.__APILock.release()
         
         self.__ErrorCode = ErrCode
         return ErrCode
